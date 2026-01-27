@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email QA Bot - Premium Comparison Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      --error-gradient: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+      --warning-gradient: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+      --dark-bg: #0f0f1a;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+      --text-muted: rgba(255, 255, 255, 0.5);
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --success-color: #38ef7d;
+      --error-color: #f45c43;
+      --warning-color: #ffd200;
+      --shadow-glow: 0 0 60px rgba(102, 126, 234, 0.3);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--dark-bg);
+      min-height: 100vh;
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    .bg-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .bg-animation::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 20% 80%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(118, 75, 162, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(240, 147, 251, 0.08) 0%, transparent 40%);
+      animation: pulse 15s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1) rotate(0deg);
+      }
+
+      50% {
+        transform: scale(1.1) rotate(5deg);
+      }
+    }
+
+    /* Main container */
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 40px 20px;
+      margin-bottom: 30px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .logo-icon {
+      width: 60px;
+      height: 60px;
+      background: var(--primary-gradient);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: var(--shadow-glow);
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    .logo-text {
+      font-size: 32px;
+      font-weight: 700;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-subtitle {
+      color: var(--text-secondary);
+      font-size: 16px;
+      font-weight: 400;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Main grid layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 30px;
+      align-items: start;
+    }
+
+    /* Glass card */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      transition: all 0.3s ease;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(102, 126, 234, 0.3);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-title-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--primary-gradient);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    /* Form styling */
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 15px;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .form-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .form-input:focus {
+      border-color: rgba(102, 126, 234, 0.5);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 20px rgba(102, 126, 234, 0.15);
+    }
+
+    /* File upload */
+    .file-upload-wrapper {
+      position: relative;
+      border: 2px dashed var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 30px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .file-upload-wrapper:hover {
+      border-color: rgba(102, 126, 234, 0.5);
+      background: rgba(102, 126, 234, 0.05);
+    }
+
+    .file-upload-wrapper.has-file {
+      border-color: rgba(17, 153, 142, 0.5);
+      background: rgba(17, 153, 142, 0.05);
+    }
+
+    .file-upload-input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .file-upload-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    .file-upload-text {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .file-upload-text strong {
+      color: #667eea;
+    }
+
+    .file-name {
+      margin-top: 12px;
+      padding: 10px 16px;
+      background: rgba(17, 153, 142, 0.1);
+      border-radius: var(--radius-sm);
+      color: #38ef7d;
+      font-size: 13px;
+      display: none;
+    }
+
+    .file-name.visible {
+      display: inline-block;
+    }
+
+    /* Submit button */
+    .btn-primary {
+      width: 100%;
+      padding: 18px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      background: var(--primary-gradient);
+      border: none;
+      border-radius: var(--radius-md);
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn-primary:hover::before {
+      left: 100%;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .btn-primary.loading .spinner {
+      display: block;
+    }
+
+    .btn-primary.loading .btn-text {
+      display: none;
+    }
+
+    /* Results section */
+    .results-card {
+      min-height: 500px;
+    }
+
+    .results-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 400px;
+      color: var(--text-muted);
+    }
+
+    .results-placeholder-icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .results-placeholder-text {
+      font-size: 16px;
+    }
+
+    /* Results content */
+    .results-content {
+      display: none;
+    }
+
+    .results-content.visible {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .status-badge.pass {
+      background: rgba(17, 153, 142, 0.15);
+      color: #38ef7d;
+      border: 1px solid rgba(56, 239, 125, 0.3);
+    }
+
+    .status-badge.fail {
+      background: rgba(235, 51, 73, 0.15);
+      color: #f45c43;
+      border: 1px solid rgba(244, 92, 67, 0.3);
+    }
+
+    /* Summary stats */
+    .summary-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .stat-item {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      border: 1px solid var(--glass-border);
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-value.success {
+      color: var(--success-color);
+    }
+
+    .stat-value.warning {
+      color: var(--warning-color);
+    }
+
+    .stat-value.error {
+      color: var(--error-color);
+    }
+
+    .stat-value.primary {
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .tab-btn.active {
+      background: var(--primary-gradient);
+      border-color: transparent;
+      color: white;
+    }
+
+    .tab-count {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      margin-left: 6px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Comparison blocks */
+    .comparison-block {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 16px;
+      border-left: 4px solid;
+      transition: all 0.3s ease;
+    }
+
+    .comparison-block:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .comparison-block.matched {
+      border-left-color: var(--success-color);
+    }
+
+    .comparison-block.partial {
+      border-left-color: var(--warning-color);
+    }
+
+    .comparison-block.not-found {
+      border-left-color: var(--error-color);
+    }
+
+    .comparison-block.metadata {
+      border-left-color: #667eea;
+    }
+
+    .block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .block-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .block-status.matched {
+      background: rgba(56, 239, 125, 0.2);
+      color: var(--success-color);
+    }
+
+    .block-status.partial {
+      background: rgba(255, 210, 0, 0.2);
+      color: var(--warning-color);
+    }
+
+    .block-status.not-found {
+      background: rgba(244, 92, 67, 0.2);
+      color: var(--error-color);
+    }
+
+    .block-status.metadata {
+      background: rgba(102, 126, 234, 0.2);
+      color: #667eea;
+    }
+
+    .block-percentage {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .block-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: var(--radius-sm);
+      word-break: break-word;
+    }
+
+    .word-analysis {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .word-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: var(--radius-sm);
+    }
+
+    .word-group-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      width: 100%;
+      margin-bottom: 4px;
+    }
+
+    .word-tag {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .word-tag.matched {
+      background: rgba(56, 239, 125, 0.2);
+      color: var(--success-color);
+    }
+
+    .word-tag.unmatched {
+      background: rgba(244, 92, 67, 0.2);
+      color: var(--error-color);
+    }
+
+    /* Link comparison */
+    .link-item {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid var(--glass-border);
+    }
+
+    .link-text {
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .link-url {
+      font-size: 12px;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-bottom: 8px;
+    }
+
+    .link-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .link-status.found {
+      color: var(--success-color);
+    }
+
+    .link-status.missing {
+      color: var(--error-color);
+    }
+
+    /* Preview section */
+    .preview-section {
+      margin-top: 30px;
+    }
+
+    .preview-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .preview-item {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+      transition: all 0.3s ease;
+    }
+
+    .preview-item:hover {
+      border-color: rgba(102, 126, 234, 0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .preview-header {
+      padding: 14px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .preview-device-icon {
+      font-size: 18px;
+    }
+
+    .preview-device-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .preview-device-size {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .preview-image-container {
+      position: relative;
+      background: #1a1a2e;
+      min-height: 200px;
+      max-height: 400px;
+      overflow: auto;
+    }
+
+    .preview-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      cursor: zoom-in;
+    }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .lightbox.active {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .lightbox-content {
+      max-width: 90%;
+      max-height: 90%;
+      position: relative;
+    }
+
+    .lightbox-image {
+      max-width: 100%;
+      max-height: 85vh;
+      border-radius: var(--radius-md);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: -40px;
+      right: 0;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 30px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+    }
+
+    .lightbox-close:hover {
+      opacity: 1;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    /* Responsive design */
+    @media (max-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header {
+        padding: 30px 15px;
+      }
+
+      .logo-text {
+        font-size: 26px;
+      }
+
+      .results-card {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .app-container {
+        padding: 15px;
+      }
+
+      .header {
+        padding: 20px 10px;
+      }
+
+      .logo {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .logo-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+      }
+
+      .logo-text {
+        font-size: 22px;
+      }
+
+      .header-subtitle {
+        font-size: 14px;
+      }
+
+      .glass-card {
+        padding: 24px 20px;
+        border-radius: var(--radius-lg);
+      }
+
+      .card-title {
+        font-size: 18px;
+      }
+
+      .form-input {
+        padding: 14px 16px;
+        font-size: 14px;
+      }
+
+      .file-upload-wrapper {
+        padding: 24px 16px;
+      }
+
+      .btn-primary {
+        padding: 16px 24px;
+        font-size: 15px;
+      }
+
+      .preview-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 12px;
+      }
+
+      .tab-btn {
+        white-space: nowrap;
+        font-size: 12px;
+        padding: 8px 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .app-container {
+        padding: 10px;
+      }
+
+      .glass-card {
+        padding: 20px 16px;
+      }
+
+      .comparison-block {
+        padding: 16px;
+      }
+
+      .block-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(102, 126, 234, 0.3);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(102, 126, 234, 0.5);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-animation"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">📧</div>
+        <span class="logo-text">Email QA Bot</span>
+      </div>
+      <p class="header-subtitle">
+        Compare your email content with source documents. See exactly what matches and what's missing.
+      </p>
+    </header>
+
+    <!-- Main content -->
+    <div class="main-grid">
+      <!-- Input form -->
+      <div class="glass-card">
+        <h2 class="card-title">
+          <span class="card-title-icon">⚡</span>
+          Quick Analysis
+        </h2>
+
+        <div class="form-group">
+          <label class="form-label">Email Preview URL</label>
+          <input type="text" id="emailUrl" class="form-input" placeholder="Paste your email preview link here...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Source Document (DOCX)</label>
+          <div class="file-upload-wrapper" id="fileDropZone">
+            <input type="file" id="docFile" class="file-upload-input" accept=".docx">
+            <div class="file-upload-icon">📄</div>
+            <p class="file-upload-text">
+              <strong>Click to upload</strong> or drag and drop<br>
+              DOCX files only
+            </p>
+            <span class="file-name" id="fileName"></span>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="runBtn" onclick="runQA()">
+          <span class="btn-content">
+            <span class="spinner"></span>
+            <span class="btn-text">🚀 Run QA Analysis</span>
+          </span>
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div class="glass-card results-card">
+        <h2 class="card-title">
+          <span class="card-title-icon">📊</span>
+          Analysis Results
+        </h2>
+
+        <div class="results-placeholder" id="resultsPlaceholder">
+          <div class="results-placeholder-icon">🔍</div>
+          <p class="results-placeholder-text">Results will appear here after analysis</p>
+        </div>
+
+        <div class="results-content" id="resultsContent">
+          <!-- Status Badge -->
+          <div id="statusBadge" class="status-badge"></div>
+
+          <!-- Summary Stats -->
+          <div class="summary-stats" id="summaryStats"></div>
+
+          <!-- Tabs -->
+          <div class="tabs" id="tabs">
+            <button class="tab-btn active" data-tab="text">📝 Text Comparison</button>
+            <button class="tab-btn" data-tab="links">🔗 Links</button>
+            <button class="tab-btn" data-tab="previews">📱 Previews</button>
+          </div>
+
+          <!-- Tab Contents -->
+          <div class="tab-content active" id="tab-text">
+            <div id="textResults"></div>
+          </div>
+
+          <div class="tab-content" id="tab-links">
+            <div id="linkResults"></div>
+          </div>
+
+          <div class="tab-content" id="tab-previews">
+            <div class="preview-grid" id="previewGrid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox for image preview -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <button class="lightbox-close" onclick="closeLightbox()">×</button>
+      <img src="" alt="Preview" class="lightbox-image" id="lightboxImage">
+    </div>
+  </div>
+
+  <script>
+    // File upload handling
+    const fileInput = document.getElementById('docFile');
+    const fileDropZone = document.getElementById('fileDropZone');
+    const fileName = document.getElementById('fileName');
+
+    fileInput.addEventListener('change', function () {
+      if (this.files && this.files[0]) {
+        fileName.textContent = '📎 ' + this.files[0].name;
+        fileName.classList.add('visible');
+        fileDropZone.classList.add('has-file');
+      }
+    });
+
+    // Drag and drop
+    fileDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      fileDropZone.style.borderColor = 'rgba(102, 126, 234, 0.8)';
+      fileDropZone.style.background = 'rgba(102, 126, 234, 0.1)';
+    });
+
+    fileDropZone.addEventListener('dragleave', () => {
+      fileDropZone.style.borderColor = '';
+      fileDropZone.style.background = '';
+    });
+
+    fileDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      fileDropZone.style.borderColor = '';
+      fileDropZone.style.background = '';
+
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        fileInput.files = e.dataTransfer.files;
+        fileName.textContent = '📎 ' + e.dataTransfer.files[0].name;
+        fileName.classList.add('visible');
+        fileDropZone.classList.add('has-file');
+      }
+    });
+
+    // Tabs functionality
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Remove active from all
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        // Add active to clicked
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Main QA function
+    async function runQA() {
+      const emailUrl = document.getElementById("emailUrl").value;
+      const file = document.getElementById("docFile").files[0];
+      const runBtn = document.getElementById("runBtn");
+      const resultsPlaceholder = document.getElementById("resultsPlaceholder");
+      const resultsContent = document.getElementById("resultsContent");
+
+      if (!emailUrl || !file) {
+        alert("Please enter URL and upload DOCX file!");
+        return;
+      }
+
+      // Set loading state
+      runBtn.classList.add("loading");
+      runBtn.disabled = true;
+      resultsPlaceholder.innerHTML = `
+        <div class="results-placeholder-icon">⏳</div>
+        <p class="results-placeholder-text">Analyzing your content... This may take a moment.</p>
+      `;
+
+      const formData = new FormData();
+      formData.append("emailUrl", emailUrl);
+      formData.append("file", file);
+
+      try {
+        const res = await fetch("http://localhost:5000/qa", { method: "POST", body: formData });
+        const data = await res.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        // Hide placeholder, show results
+        resultsPlaceholder.style.display = "none";
+        resultsContent.classList.add("visible");
+
+        // Render results
+        renderResults(data);
+
+      } catch (err) {
+        resultsPlaceholder.innerHTML = `
+          <div class="results-placeholder-icon">❌</div>
+          <p class="results-placeholder-text">Error: ${err.message}</p>
+        `;
+      } finally {
+        runBtn.classList.remove("loading");
+        runBtn.disabled = false;
+      }
+    }
+
+    function renderResults(data) {
+      const statusBadge = document.getElementById('statusBadge');
+      const summaryStats = document.getElementById('summaryStats');
+      const textResults = document.getElementById('textResults');
+      const linkResults = document.getElementById('linkResults');
+      const previewGrid = document.getElementById('previewGrid');
+
+      // Status Badge
+      const isPassing = data.overallStatus === 'PASS';
+      statusBadge.className = `status-badge ${isPassing ? 'pass' : 'fail'}`;
+      statusBadge.innerHTML = isPassing
+        ? '✅ All Content Matched'
+        : '⚠️ Differences Detected';
+
+      // Summary Stats
+      const textSummary = data.textComparison.summary;
+      const linkSummary = data.linkComparison.summary;
+
+      summaryStats.innerHTML = `
+        <div class="stat-item">
+          <div class="stat-value primary">${textSummary.overallScore}%</div>
+          <div class="stat-label">Match Score</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value success">${textSummary.fullMatches}</div>
+          <div class="stat-label">Full Matches</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value warning">${textSummary.partialMatches}</div>
+          <div class="stat-label">Partial</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value error">${textSummary.notFound}</div>
+          <div class="stat-label">Not Found</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value success">${linkSummary.foundInEmail}</div>
+          <div class="stat-label">Links OK</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value error">${linkSummary.missing}</div>
+          <div class="stat-label">Links Missing</div>
+        </div>
+      `;
+
+      // Update tab counts
+      const tabs = document.getElementById('tabs');
+      tabs.innerHTML = `
+        <button class="tab-btn active" data-tab="text">
+          📝 Text Comparison
+          <span class="tab-count">${textSummary.totalBlocks}</span>
+        </button>
+        <button class="tab-btn" data-tab="links">
+          🔗 Links
+          <span class="tab-count">${linkSummary.totalLinks}</span>
+        </button>
+        <button class="tab-btn" data-tab="previews">📱 Previews</button>
+      `;
+
+      // Re-add tab listeners
+      tabs.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        });
+      });
+
+      // Text Results
+      let textHtml = '';
+
+      // Metadata (subject/preheader)
+      if (data.textComparison.details.metadata.length > 0) {
+        textHtml += '<h4 style="color: var(--text-secondary); margin-bottom: 12px; font-size: 14px;">📋 METADATA (Not in email body)</h4>';
+        data.textComparison.details.metadata.forEach(item => {
+          textHtml += `
+            <div class="comparison-block metadata">
+              <div class="block-header">
+                <span class="block-status metadata">ℹ️ ${item.type}</span>
+              </div>
+              <div class="block-text">${escapeHtml(item.content)}</div>
+              <div style="font-size: 12px; color: var(--text-muted);">${item.note}</div>
+            </div>
+          `;
+        });
+      }
+
+      // Full Matches
+      if (data.textComparison.details.matched.length > 0) {
+        textHtml += '<h4 style="color: var(--success-color); margin: 20px 0 12px; font-size: 14px;">✅ FULL MATCHES</h4>';
+        data.textComparison.details.matched.forEach(item => {
+          textHtml += renderComparisonBlock(item, 'matched');
+        });
+      }
+
+      // Partial Matches
+      if (data.textComparison.details.partialMatch.length > 0) {
+        textHtml += '<h4 style="color: var(--warning-color); margin: 20px 0 12px; font-size: 14px;">⚠️ PARTIAL MATCHES</h4>';
+        data.textComparison.details.partialMatch.forEach(item => {
+          textHtml += renderComparisonBlock(item, 'partial');
+        });
+      }
+
+      // Not Found
+      if (data.textComparison.details.notFound.length > 0) {
+        textHtml += '<h4 style="color: var(--error-color); margin: 20px 0 12px; font-size: 14px;">❌ NOT FOUND IN EMAIL</h4>';
+        data.textComparison.details.notFound.forEach(item => {
+          textHtml += renderComparisonBlock(item, 'not-found');
+        });
+      }
+
+      if (!textHtml) {
+        textHtml = '<div class="empty-state"><div class="empty-state-icon">📝</div><p>No text blocks to compare</p></div>';
+      }
+
+      textResults.innerHTML = textHtml;
+
+      // Link Results
+      let linkHtml = '';
+
+      if (data.linkComparison.details.length > 0) {
+        data.linkComparison.details.forEach(link => {
+          const isFound = link.foundInEmail === 'YES';
+          linkHtml += `
+            <div class="link-item">
+              <div class="link-text">${escapeHtml(link.text) || '(No text)'}</div>
+              <div class="link-url">${escapeHtml(link.docHref)}</div>
+              <span class="link-status ${isFound ? 'found' : 'missing'}">
+                ${isFound ? '✅ Found in email' : '❌ Missing from email'}
+              </span>
+              ${link.utmInDoc === 'YES' ? '<span style="margin-left: 12px; font-size: 11px; color: var(--text-muted);">📊 Has UTM</span>' : ''}
+            </div>
+          `;
+        });
+      } else {
+        linkHtml = '<div class="empty-state"><div class="empty-state-icon">🔗</div><p>No links found in document</p></div>';
+      }
+
+      linkResults.innerHTML = linkHtml;
+
+      // Previews
+      previewGrid.innerHTML = `
+        <div class="preview-item">
+          <div class="preview-header">
+            <span class="preview-device-icon">🖥️</span>
+            <span class="preview-device-name">Desktop</span>
+            <span class="preview-device-size">1200×900</span>
+          </div>
+          <div class="preview-image-container">
+            <img src="http://localhost:5000${data.screenshots.desktop}" 
+                 alt="Desktop Preview" 
+                 class="preview-image"
+                 onclick="openLightbox(this.src)"
+                 onerror="this.parentElement.innerHTML='<div class=\"empty-state\"><div class=\"empty-state-icon\">📷</div><p>Preview not available</p></div>'">
+          </div>
+        </div>
+        <div class="preview-item">
+          <div class="preview-header">
+            <span class="preview-device-icon">📱</span>
+            <span class="preview-device-name">Mobile</span>
+            <span class="preview-device-size">375×812</span>
+          </div>
+          <div class="preview-image-container">
+            <img src="http://localhost:5000${data.screenshots.mobile}" 
+                 alt="Mobile Preview" 
+                 class="preview-image"
+                 onclick="openLightbox(this.src)"
+                 onerror="this.parentElement.innerHTML='<div class=\"empty-state\"><div class=\"empty-state-icon\">📷</div><p>Preview not available</p></div>'">
+          </div>
+        </div>
+      `;
+
+      // Add responsive info
+      const responsiveInfo = document.createElement('div');
+      responsiveInfo.style.cssText = 'margin-top: 20px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 12px; text-align: center;';
+      responsiveInfo.innerHTML = `
+        <span style="font-size: 14px; color: var(--text-secondary);">
+          📱 Responsive Check: <strong style="color: ${data.responsive.includes('YES') ? 'var(--success-color)' : 'var(--warning-color)'}">${data.responsive}</strong>
+        </span>
+      `;
+      previewGrid.appendChild(responsiveInfo);
+    }
+
+    function renderComparisonBlock(item, type) {
+      const statusEmoji = type === 'matched' ? '✅' : type === 'partial' ? '⚠️' : '❌';
+      const statusText = type === 'matched' ? 'FULL MATCH' : type === 'partial' ? 'PARTIAL MATCH' : 'NOT FOUND';
+
+      return `
+        <div class="comparison-block ${type}">
+          <div class="block-header">
+            <span class="block-status ${type}">${statusEmoji} ${statusText}</span>
+            <span class="block-percentage" style="color: ${type === 'matched' ? 'var(--success-color)' : type === 'partial' ? 'var(--warning-color)' : 'var(--error-color)'}">
+              ${item.matchPercentage}% match
+            </span>
+          </div>
+          <div class="block-text">${escapeHtml(item.originalText)}</div>
+          <div class="word-analysis">
+            ${item.matchedWords.length > 0 ? `
+              <div class="word-group">
+                <div class="word-group-label">✓ Matched Words (${item.matchedWords.length})</div>
+                ${item.matchedWords.map(w => `<span class="word-tag matched">${escapeHtml(w)}</span>`).join('')}
+              </div>
+            ` : ''}
+            ${item.unmatchedWords.length > 0 ? `
+              <div class="word-group">
+                <div class="word-group-label">✗ Not Found (${item.unmatchedWords.length})</div>
+                ${item.unmatchedWords.map(w => `<span class="word-tag unmatched">${escapeHtml(w)}</span>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Lightbox functions
+    function openLightbox(src) {
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImage = document.getElementById('lightboxImage');
+      lightboxImage.src = src;
+      lightbox.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      const lightbox = document.getElementById('lightbox');
+      lightbox.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // Close lightbox on escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  </script>
+</body>
+
+</html>

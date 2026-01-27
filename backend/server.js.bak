@@ -1,0 +1,272 @@
+import express from "express";
+import multer from "multer";
+import mammoth from "mammoth";
+import { chromium } from "playwright";
+import cors from "cors";
+import fs from "fs";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const upload = multer({ dest: "uploads/" });
+
+// ---------------------------------------------------------
+// CLEAN NORMALIZE
+// ---------------------------------------------------------
+const normalize = (text = "") =>
+  text
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\r\n]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/[^\w\s]/g, "")
+    .replace(/[\(\[].*?[\)\]]/g, "")
+    .toLowerCase()
+    .trim();
+
+// ---------------------------------------------------------
+// FUZZY MATCH
+// ---------------------------------------------------------
+const fuzzyMatch = (docBlock, emailText, threshold = 0.7) => {
+  const docWords = normalize(docBlock).split(" ").filter(Boolean);
+  const emailWords = normalize(emailText).split(" ").filter(Boolean);
+  if (!docWords.length) return false;
+
+  const matchCount = docWords.reduce(
+    (count, word) => (emailWords.includes(word) ? count + 1 : count),
+    0
+  );
+  return matchCount / docWords.length >= threshold;
+};
+
+// ---------------------------------------------------------
+// UTM HELPERS
+// ---------------------------------------------------------
+const stripUtm = (href = "") => {
+  try {
+    const url = new URL(href);
+    url.searchParams.forEach((_, key) => {
+      if (key.toLowerCase().startsWith("utm")) url.searchParams.delete(key);
+    });
+    return url.origin + url.pathname;
+  } catch {
+    return href.split("?")[0].trim();
+  }
+};
+const hasUtm = (href) => /utm[_=-]/i.test(href);
+
+// ---------------------------------------------------------
+// SCRAPE EMAIL
+// ---------------------------------------------------------
+async function getEmailContent(url) {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  await page.goto(url, { waitUntil: "networkidle" });
+
+  const text = await page.evaluate(() => document.body.innerText || "");
+
+  const links = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("a")).map((a) => ({
+      text: a.innerText.trim(),
+      href: a.href || "",
+    }))
+  );
+
+  const images = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("img")).map((img) => ({
+      src: img.src || "",
+      alt: img.alt || "",
+    }))
+  );
+
+  await browser.close();
+  return { text, links, images };
+}
+
+// ---------------------------------------------------------
+// DOCX TEXT + LINKS
+// ---------------------------------------------------------
+async function extractDoc(filePath) {
+  const rawText = (await mammoth.extractRawText({ path: filePath })).value || "";
+  const html = (await mammoth.convertToHtml({ path: filePath })).value || "";
+
+  const links = [];
+  const anchorRegex = /<a[^>]*href="([^"]+)"[^>]*>([^<]*)<\/a>/gi;
+  let match;
+  while ((match = anchorRegex.exec(html)) !== null) {
+    links.push({ text: match[2].trim(), href: match[1].trim() });
+  }
+
+  // RAW URLs
+  new Set(rawText.match(/https?:\/\/[^\s"')]+/gi) || []).forEach((u) =>
+    links.push({ text: u, href: u })
+  );
+
+  return { docText: rawText, docLinks: links };
+}
+
+// ---------------------------------------------------------
+// BLOCK CHECK (includes forced missing for SUBJECT line)
+// ---------------------------------------------------------
+const compareBlocks = (docText, emailText) => {
+  const blocks = docText
+    .split(/\n{1,2}/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
+  return blocks.filter((b) => {
+    const lower = b.toLowerCase();
+    if (lower.includes("subject") || lower.includes("preheader")) return true;
+    return !fuzzyMatch(b, emailText);
+  });
+};
+
+// ---------------------------------------------------------
+// LINK CHECK
+// ---------------------------------------------------------
+const compareLinks = (docLinks, emailLinks) => {
+  const emailMap = emailLinks.map((l) => stripUtm(l.href));
+  const missing = [];
+  const report = [];
+
+  docLinks.forEach((dl) => {
+    const docStripped = stripUtm(dl.href);
+    const found = emailMap.includes(docStripped);
+
+    report.push({
+      text: dl.text,
+      docHref: dl.href,
+      foundInEmail: found ? "YES" : "NO",
+      utmInDoc: hasUtm(dl.href) ? "YES" : "NO",
+    });
+
+    if (!found) missing.push(dl);
+  });
+
+  return { report, missing };
+};
+
+// ---------------------------------------------------------
+// IMPROVED RESPONSIVE CHECK
+// ---------------------------------------------------------
+async function captureScreenshots(url) {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+
+  // Desktop
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.goto(url, { waitUntil: "networkidle" });
+  const desktopScreenshot = await page.screenshot({ fullPage: true });
+
+  // Extract container width
+  const desktopWidth = await page.evaluate(() => {
+    const el = document.body.querySelector("table, div, img");
+    return el ? el.getBoundingClientRect().width : 0;
+  });
+
+  // Mobile
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.reload({ waitUntil: "networkidle" });
+  const mobileScreenshot = await page.screenshot({ fullPage: true });
+
+  const mobileWidth = await page.evaluate(() => {
+    const el = document.body.querySelector("table, div, img");
+    return el ? el.getBoundingClientRect().width : 0;
+  });
+
+  await browser.close();
+
+  const responsive =
+    mobileWidth < desktopWidth * 0.85
+      ? "YES – Layout changes on mobile"
+      : "NO – Layout remains same";
+
+  return { desktopScreenshot, mobileScreenshot, responsive };
+}
+
+// ---------------------------------------------------------
+// FORMAT OUTPUT
+// ---------------------------------------------------------
+function formatResult(data) {
+  let out = "";
+
+  out += "=======================\n🟡 Body:\n=======================\n\n";
+  if (data.missingContent.length === 0) out += "• All blocks found\n\n";
+  else data.missingContent.forEach((b) => (out += `• ${b}\n`));
+  out += "\n";
+
+  out += "=======================\n🔗 Link Report:\n=======================\n\n";
+
+  if (data.linkReport.length === 0) {
+    out += "• No links present in document to compare\n\n";
+  } else {
+    data.linkReport.forEach((r) => {
+      out += `• ${r.text}\n`;
+      out += `  Doc URL: ${r.docHref}\n`;
+      out += `  Found in Email: ${r.foundInEmail}\n`;
+      out += `  UTM in Doc: ${r.utmInDoc}\n\n`;
+    });
+  }
+
+  out += "=======================\n🚫 Missing Links:\n=======================\n\n";
+  if (data.linkReport.length === 0) {
+    out += "• No links in document\n\n";
+  } else if (data.missingDocLinks.length === 0) {
+    out += "• None\n\n";
+  } else {
+    data.missingDocLinks.forEach((l) => (out += `• ${l.text} → ${l.href}\n`));
+  }
+
+  out += "\n=======================\n📱 Responsive:\n=======================\n\n";
+  out += `• ${data.responsive}\n\n`;
+
+  out += "=======================\n🖼 Screenshots:\n=======================\n\n";
+  out += `• Desktop:\n<img src="data:image/png;base64,${data.desktopScreenshot}" style="max-width:100%; border:1px solid #ccc;" />\n\n`;
+  out += `• Mobile:\n<img src="data:image/png;base64,${data.mobileScreenshot}" style="max-width:300px; border:1px solid #ccc;" />\n\n`;
+
+  return out;
+}
+
+// ---------------------------------------------------------
+// MAIN ENDPOINT
+// ---------------------------------------------------------
+app.post("/qa", upload.single("file"), async (req, res) => {
+  try {
+    const { emailUrl } = req.body;
+    const file = req.file;
+
+    if (!emailUrl || !file) {
+      return res.status(400).json({ error: "Missing input" });
+    }
+
+    const { docText, docLinks } = await extractDoc(file.path);
+    const { text: emailText, links: emailLinks } = await getEmailContent(emailUrl);
+    const missingContent = compareBlocks(docText, emailText);
+    const { report: linkReport, missing: missingDocLinks } = compareLinks(
+      docLinks,
+      emailLinks
+    );
+    const { desktopScreenshot, mobileScreenshot, responsive } =
+      await captureScreenshots(emailUrl);
+
+    fs.unlinkSync(file.path);
+
+    const formatted = formatResult({
+      missingContent,
+      linkReport,
+      missingDocLinks,
+      responsive,
+      desktopScreenshot: desktopScreenshot.toString("base64"),
+      mobileScreenshot: mobileScreenshot.toString("base64"),
+    });
+
+    res.send(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "QA processing failed" });
+  }
+});
+
+app.listen(5000, () => console.log("🚀 QA Server running on port 5000"));

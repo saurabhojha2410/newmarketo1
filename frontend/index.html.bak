@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Email QA Bot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7fb;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 70%;
+      margin-top: 60px;
+      background: white;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"], input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      font-size: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 22px;
+      background: #4a6cff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    pre {
+      background: #f4f4f4;
+      padding: 18px;
+      border-radius: 8px;
+      font-size: 15px;
+      white-space: pre-wrap;
+      margin-top: 30px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .screenshots {
+      margin-top: 30px;
+    }
+
+    .screenshots img {
+      width: 100%;
+      max-height: 500px;
+      object-fit: contain;
+      border-radius: 10px;
+      margin-top: 15px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>📧 Email QA Bot</h2>
+
+  <label>Email Preview URL:</label>
+  <input id="emailUrl" type="text" placeholder="Enter email preview link">
+
+  <label>Upload DOCX Content File:</label>
+  <input id="docFile" type="file" accept=".docx">
+
+  <button onclick="runQA()">Run QA</button>
+
+  <!-- QA Report -->
+  <div id="result" style="margin-top: 20px;">Awaiting results...</div>
+</div>
+
+<script>
+async function runQA() {
+  const emailUrl = document.getElementById("emailUrl").value;
+  const file = document.getElementById("docFile").files[0];
+
+  if (!emailUrl || !file) {
+    alert("Please enter URL and upload DOCX file!");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("emailUrl", emailUrl);
+  formData.append("file", file);
+
+  document.getElementById("result").innerHTML = "<p>Processing...</p>";
+
+ try {
+    const res = await fetch("http://localhost:5000/qa", { method: "POST", body: formData });
+    const textData = await res.text(); // server sends text
+
+    // Wrap text in <pre> for proper formatting
+   document.getElementById("result").innerHTML = `<pre>${textData}</pre>`;
+} catch (err) {
+    document.getElementById("result").innerText = "❌ QA failed: " + err.message;
+}
+}
+</script>
+
+</body>
+</html>
