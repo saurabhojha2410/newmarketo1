@@ -1,9 +1,10 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Email QA Bot Backend",
   "main": "server.js",
   "scripts": {
+    "build": "npx playwright install chromium --with-deps",
     "start": "node server.js"
   },
   "keywords": [],

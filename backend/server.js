@@ -5,6 +5,11 @@ import { chromium } from "playwright";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+// ES module dirname workaround
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
@@ -12,6 +17,9 @@ app.use(express.json());
 
 // Serve screenshots statically
 app.use('/screenshots', express.static('screenshots'));
+
+// Serve frontend static files (for production deployment)
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 const upload = multer({ dest: "uploads/" });
 
@@ -40,7 +48,7 @@ const getSimilarityScore = (docBlock, emailText) => {
 
   const matchedWords = [];
   const unmatchedWords = [];
-  
+
   docWords.forEach(word => {
     if (emailWords.includes(word)) {
       matchedWords.push(word);
@@ -138,10 +146,10 @@ const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
 
   blocks.forEach((block) => {
     const lower = block.toLowerCase();
-    
+
     // Check if it's metadata (subject, preheader)
-    if (lower.includes("subject:") || lower.includes("preheader:") || 
-        lower.startsWith("subject") || lower.startsWith("preheader")) {
+    if (lower.includes("subject:") || lower.includes("preheader:") ||
+      lower.startsWith("subject") || lower.startsWith("preheader")) {
       results.metadata.push({
         type: lower.includes("subject") ? "Subject Line" : "Preheader",
         content: block,
@@ -175,7 +183,7 @@ const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
 
   // Calculate overall statistics
   const totalBlocks = results.matched.length + results.partialMatch.length + results.notFound.length;
-  const overallScore = totalBlocks > 0 
+  const overallScore = totalBlocks > 0
     ? Math.round(((results.matched.length + results.partialMatch.length * 0.5) / totalBlocks) * 100)
     : 100;
 
@@ -319,10 +327,10 @@ app.post("/qa", upload.single("file"), async (req, res) => {
 
     const { docText, docLinks } = await extractDoc(file.path);
     const { text: emailText, links: emailLinks } = await getEmailContent(emailUrl);
-    
+
     // Use new detailed comparison
     const textComparison = compareTextDetailed(docText, emailText);
-    
+
     const { report: linkReport, missing: missingDocLinks } = compareLinks(
       docLinks,
       emailLinks
@@ -347,4 +355,5 @@ app.post("/qa", upload.single("file"), async (req, res) => {
   }
 });
 
-app.listen(5000, () => console.log("🚀 QA Server running on port 5000"));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 QA Server running on port ${PORT}`));

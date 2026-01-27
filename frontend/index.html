@@ -1147,7 +1147,7 @@
       formData.append("file", file);
 
       try {
-        const res = await fetch("http://localhost:5000/qa", { method: "POST", body: formData });
+        const res = await fetch("/qa", { method: "POST", body: formData });
         const data = await res.json();
 
         if (data.error) {
@@ -1322,7 +1322,7 @@
             <span class="preview-device-size">1200×900</span>
           </div>
           <div class="preview-image-container">
-            <img src="http://localhost:5000${data.screenshots.desktop}" 
+            <img src="${data.screenshots.desktop}" 
                  alt="Desktop Preview" 
                  class="preview-image"
                  onclick="openLightbox(this.src)"
@@ -1336,7 +1336,7 @@
             <span class="preview-device-size">375×812</span>
           </div>
           <div class="preview-image-container">
-            <img src="http://localhost:5000${data.screenshots.mobile}" 
+            <img src="${data.screenshots.mobile}" 
                  alt="Mobile Preview" 
                  class="preview-image"
                  onclick="openLightbox(this.src)"
