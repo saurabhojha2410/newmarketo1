@@ -1,11 +1,12 @@
 import express from "express";
 import multer from "multer";
 import mammoth from "mammoth";
-import { chromium } from "playwright";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import axios from "axios";
+import * as cheerio from "cheerio";
 
 // ES module dirname workaround
 const __filename = fileURLToPath(import.meta.url);
@@ -17,6 +18,9 @@ app.use(express.json());
 
 // Handle favicon requests
 app.get('/favicon.ico', (req, res) => res.status(204).end());
+
+// Health check endpoint
+app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
 // Serve screenshots statically
 app.use('/screenshots', express.static('screenshots'));
@@ -81,34 +85,57 @@ const stripUtm = (href = "") => {
 const hasUtm = (href) => /utm[_=-]/i.test(href);
 
 // ---------------------------------------------------------
-// SCRAPE EMAIL
+// SCRAPE EMAIL (using axios + cheerio - NO BROWSER NEEDED!)
 // ---------------------------------------------------------
 async function getEmailContent(url) {
-  const browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-  });
-  const page = await browser.newPage();
-  await page.goto(url, { waitUntil: "networkidle" });
+  try {
+    // Fetch the HTML using axios
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      timeout: 30000,
+      maxRedirects: 5,
+    });
 
-  const text = await page.evaluate(() => document.body.innerText || "");
+    const html = response.data;
+    const $ = cheerio.load(html);
 
-  const links = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("a")).map((a) => ({
-      text: a.innerText.trim(),
-      href: a.href || "",
-    }))
-  );
+    // Remove script and style elements
+    $('script, style, noscript').remove();
 
-  const images = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("img")).map((img) => ({
-      src: img.src || "",
-      alt: img.alt || "",
-    }))
-  );
+    // Extract text content
+    const text = $('body').text()
+      .replace(/\s+/g, ' ')
+      .trim();
 
-  await browser.close();
-  return { text, links, images };
+    // Extract links
+    const links = [];
+    $('a').each((_, element) => {
+      const href = $(element).attr('href') || '';
+      const linkText = $(element).text().trim();
+      if (href) {
+        links.push({ text: linkText, href: href });
+      }
+    });
+
+    // Extract images
+    const images = [];
+    $('img').each((_, element) => {
+      const src = $(element).attr('src') || '';
+      const alt = $(element).attr('alt') || '';
+      if (src) {
+        images.push({ src, alt });
+      }
+    });
+
+    return { text, links, images };
+  } catch (error) {
+    console.error("Error fetching email content:", error.message);
+    throw new Error(`Failed to fetch email content: ${error.message}`);
+  }
 }
 
 // ---------------------------------------------------------
@@ -232,63 +259,61 @@ const compareLinks = (docLinks, emailLinks) => {
 };
 
 // ---------------------------------------------------------
-// RESPONSIVE CHECK WITH SAVED SCREENSHOTS
+// RESPONSIVE CHECK (using free screenshot API)
 // ---------------------------------------------------------
-async function captureScreenshots(url) {
-  const browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-  });
-  const page = await browser.newPage();
+async function checkResponsive(url) {
+  // We'll use a simple heuristic based on viewport meta tag
+  // and media queries presence
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+      timeout: 15000,
+    });
 
-  // Ensure screenshots directory exists
-  if (!fs.existsSync('screenshots')) {
-    fs.mkdirSync('screenshots');
+    const html = response.data;
+    const $ = cheerio.load(html);
+
+    // Check for viewport meta tag
+    const viewportMeta = $('meta[name="viewport"]').attr('content') || '';
+    const hasViewport = viewportMeta.includes('width=device-width') || viewportMeta.includes('initial-scale');
+
+    // Check for responsive patterns in style
+    const hasMediaQueries = html.includes('@media') ||
+      html.includes('max-width') ||
+      html.includes('min-width');
+
+    // Check for responsive table patterns (common in emails)
+    const hasResponsiveTables = html.includes('100%') ||
+      html.includes('max-width:');
+
+    let responsive = "Unable to determine";
+    if (hasViewport && (hasMediaQueries || hasResponsiveTables)) {
+      responsive = "YES – Likely responsive (viewport & media queries detected)";
+    } else if (hasViewport) {
+      responsive = "MAYBE – Has viewport tag but limited responsive CSS";
+    } else {
+      responsive = "NO – No responsive indicators found";
+    }
+
+    return {
+      responsive,
+      details: {
+        hasViewportTag: hasViewport,
+        hasMediaQueries,
+        hasResponsiveTables,
+        viewportContent: viewportMeta || 'Not found'
+      }
+    };
+  } catch (error) {
+    console.error("Error checking responsiveness:", error.message);
+    return {
+      responsive: "Unable to check",
+      details: { error: error.message }
+    };
   }
-
-  // DESKTOP VIEW
-  await page.setViewportSize({ width: 1200, height: 900 });
-  await page.goto(url, { waitUntil: "networkidle" });
-
-  const desktopScreenshot = await page.screenshot({ fullPage: true });
-  fs.writeFileSync('screenshots/desktop.png', desktopScreenshot);
-
-  const desktopMainWidth = await page.evaluate(() => {
-    const maxWidth = Math.max(
-      ...Array.from(document.querySelectorAll("*")).map(el => el.clientWidth || 0)
-    );
-    return maxWidth;
-  });
-
-  // MOBILE VIEW
-  await page.setViewportSize({ width: 375, height: 812 });
-  await page.reload({ waitUntil: "networkidle" });
-
-  const mobileScreenshot = await page.screenshot({ fullPage: true });
-  fs.writeFileSync('screenshots/mobile.png', mobileScreenshot);
-
-  const mobileMainWidth = await page.evaluate(() => {
-    const maxWidth = Math.max(
-      ...Array.from(document.querySelectorAll("*")).map(el => el.clientWidth || 0)
-    );
-    return maxWidth;
-  });
-
-  await browser.close();
-
-  // NEW RESPONSIVE LOGIC
-  const responsive =
-    mobileMainWidth < desktopMainWidth - 100
-      ? "YES – Layout changes on mobile"
-      : "NO – Layout remains similar";
-
-  return {
-    desktopScreenshot,
-    mobileScreenshot,
-    responsive
-  };
 }
-
 
 // ---------------------------------------------------------
 // FORMAT OUTPUT AS JSON
@@ -315,10 +340,7 @@ function formatResultJSON(data) {
       missingLinks: data.missingDocLinks
     },
     responsive: data.responsive,
-    screenshots: {
-      desktop: `/screenshots/desktop.png?t=${Date.now()}`,
-      mobile: `/screenshots/mobile.png?t=${Date.now()}`
-    }
+    responsiveDetails: data.responsiveDetails || null
   };
 }
 
@@ -334,8 +356,14 @@ app.post("/qa", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "Missing input" });
     }
 
+    console.log(`Processing QA for URL: ${emailUrl}`);
+    console.log(`File: ${file.originalname}`);
+
     const { docText, docLinks } = await extractDoc(file.path);
+    console.log(`Extracted ${docLinks.length} links from document`);
+
     const { text: emailText, links: emailLinks } = await getEmailContent(emailUrl);
+    console.log(`Extracted ${emailLinks.length} links from email`);
 
     // Use new detailed comparison
     const textComparison = compareTextDetailed(docText, emailText);
@@ -344,9 +372,11 @@ app.post("/qa", upload.single("file"), async (req, res) => {
       docLinks,
       emailLinks
     );
-    const { desktopScreenshot, mobileScreenshot, responsive } =
-      await captureScreenshots(emailUrl);
 
+    // Check responsive design
+    const { responsive, details: responsiveDetails } = await checkResponsive(emailUrl);
+
+    // Clean up uploaded file
     fs.unlinkSync(file.path);
 
     // Return JSON response
@@ -354,9 +384,11 @@ app.post("/qa", upload.single("file"), async (req, res) => {
       textComparison,
       linkReport,
       missingDocLinks,
-      responsive
+      responsive,
+      responsiveDetails
     });
 
+    console.log(`QA completed. Overall status: ${result.overallStatus}`);
     res.json(result);
   } catch (err) {
     console.error("QA Processing Error:", err.message);

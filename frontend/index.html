@@ -1313,47 +1313,63 @@
 
       linkResults.innerHTML = linkHtml;
 
-      // Previews
-      previewGrid.innerHTML = `
-        <div class="preview-item">
-          <div class="preview-header">
-            <span class="preview-device-icon">🖥️</span>
-            <span class="preview-device-name">Desktop</span>
-            <span class="preview-device-size">1200×900</span>
+      // Previews - now shows responsive analysis instead of screenshots
+      let previewHtml = `
+        <div style="text-align: center; padding: 40px 20px;">
+          <div style="font-size: 48px; margin-bottom: 20px;">📱</div>
+          <h3 style="color: var(--text-primary); margin-bottom: 16px;">Responsive Design Check</h3>
+          <div style="padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 20px;">
+            <div style="font-size: 18px; color: ${data.responsive && data.responsive.includes('YES') ? 'var(--success-color)' : data.responsive && data.responsive.includes('MAYBE') ? 'var(--warning-color)' : 'var(--error-color)'}; font-weight: 600;">
+              ${data.responsive || 'Unable to determine'}
+            </div>
           </div>
-          <div class="preview-image-container">
-            <img src="${data.screenshots.desktop}" 
-                 alt="Desktop Preview" 
-                 class="preview-image"
-                 onclick="openLightbox(this.src)"
-                 onerror="this.parentElement.innerHTML='<div class=\"empty-state\"><div class=\"empty-state-icon\">📷</div><p>Preview not available</p></div>'">
+      `;
+
+      // Add responsive details if available
+      if (data.responsiveDetails) {
+        previewHtml += `
+          <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; text-align: left;">
+            <h4 style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">📊 Analysis Details</h4>
+            <div style="display: grid; gap: 12px;">
+              <div style="display: flex; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <span style="color: var(--text-muted);">Viewport Meta Tag</span>
+                <span style="color: ${data.responsiveDetails.hasViewportTag ? 'var(--success-color)' : 'var(--error-color)'};">
+                  ${data.responsiveDetails.hasViewportTag ? '✅ Found' : '❌ Not Found'}
+                </span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <span style="color: var(--text-muted);">Media Queries</span>
+                <span style="color: ${data.responsiveDetails.hasMediaQueries ? 'var(--success-color)' : 'var(--warning-color)'};">
+                  ${data.responsiveDetails.hasMediaQueries ? '✅ Found' : '⚠️ Not Found'}
+                </span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <span style="color: var(--text-muted);">Responsive Tables</span>
+                <span style="color: ${data.responsiveDetails.hasResponsiveTables ? 'var(--success-color)' : 'var(--warning-color)'};">
+                  ${data.responsiveDetails.hasResponsiveTables ? '✅ Found' : '⚠️ Not Found'}
+                </span>
+              </div>
+              ${data.responsiveDetails.viewportContent ? `
+                <div style="padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                  <span style="color: var(--text-muted); display: block; margin-bottom: 6px;">Viewport Content:</span>
+                  <code style="color: var(--text-primary); font-size: 12px; word-break: break-all;">${escapeHtml(data.responsiveDetails.viewportContent)}</code>
+                </div>
+              ` : ''}
+            </div>
           </div>
-        </div>
-        <div class="preview-item">
-          <div class="preview-header">
-            <span class="preview-device-icon">📱</span>
-            <span class="preview-device-name">Mobile</span>
-            <span class="preview-device-size">375×812</span>
-          </div>
-          <div class="preview-image-container">
-            <img src="${data.screenshots.mobile}" 
-                 alt="Mobile Preview" 
-                 class="preview-image"
-                 onclick="openLightbox(this.src)"
-                 onerror="this.parentElement.innerHTML='<div class=\"empty-state\"><div class=\"empty-state-icon\">📷</div><p>Preview not available</p></div>'">
+        `;
+      }
+
+      previewHtml += `
+          <div style="margin-top: 20px; padding: 16px; background: rgba(102, 126, 234, 0.1); border-radius: 8px; border: 1px solid rgba(102, 126, 234, 0.2);">
+            <p style="color: var(--text-secondary); font-size: 13px; margin: 0;">
+              💡 <strong>Tip:</strong> To see actual screenshots, open the email URL in your browser and use browser DevTools to preview different screen sizes.
+            </p>
           </div>
         </div>
       `;
 
-      // Add responsive info
-      const responsiveInfo = document.createElement('div');
-      responsiveInfo.style.cssText = 'margin-top: 20px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 12px; text-align: center;';
-      responsiveInfo.innerHTML = `
-        <span style="font-size: 14px; color: var(--text-secondary);">
-          📱 Responsive Check: <strong style="color: ${data.responsive.includes('YES') ? 'var(--success-color)' : 'var(--warning-color)'}">${data.responsive}</strong>
-        </span>
-      `;
-      previewGrid.appendChild(responsiveInfo);
+      previewGrid.innerHTML = previewHtml;
     }
 
     function renderComparisonBlock(item, type) {
