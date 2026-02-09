@@ -4,7 +4,7 @@
   "description": "Email QA Bot Backend",
   "main": "server.js",
   "scripts": {
-    "build": "npx playwright install chromium --with-deps",
+    "build": "npm install && npx playwright install chromium --with-deps",
     "start": "node server.js"
   },
   "keywords": [],

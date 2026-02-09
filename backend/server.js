@@ -15,6 +15,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Handle favicon requests
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // Serve screenshots statically
 app.use('/screenshots', express.static('screenshots'));
 
@@ -81,7 +84,10 @@ const hasUtm = (href) => /utm[_=-]/i.test(href);
 // SCRAPE EMAIL
 // ---------------------------------------------------------
 async function getEmailContent(url) {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+  });
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "networkidle" });
 
@@ -229,7 +235,10 @@ const compareLinks = (docLinks, emailLinks) => {
 // RESPONSIVE CHECK WITH SAVED SCREENSHOTS
 // ---------------------------------------------------------
 async function captureScreenshots(url) {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+  });
   const page = await browser.newPage();
 
   // Ensure screenshots directory exists
@@ -350,8 +359,9 @@ app.post("/qa", upload.single("file"), async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "QA processing failed" });
+    console.error("QA Processing Error:", err.message);
+    console.error("Stack trace:", err.stack);
+    res.status(500).json({ error: "QA processing failed", details: err.message });
   }
 });
 
