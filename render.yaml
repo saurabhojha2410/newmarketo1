@@ -1,11 +1,8 @@
 services:
   - type: web
     name: email-qa-bot
-    runtime: node
-    buildCommand: cd backend && npm install && npx playwright install chromium --with-deps
-    startCommand: cd backend && npm run start
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PLAYWRIGHT_BROWSERS_PATH
-        value: /opt/render/.cache/ms-playwright
