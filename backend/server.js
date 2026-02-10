@@ -86,19 +86,61 @@ const hasUtm = (href) => /utm[_=-]/i.test(href);
 
 // ---------------------------------------------------------
 // SCRAPE EMAIL (using axios + cheerio - NO BROWSER NEEDED!)
+// Handles 302 redirect chains with cookie forwarding
 // ---------------------------------------------------------
 async function getEmailContent(url) {
   try {
-    // Fetch the HTML using axios
-    const response = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-      },
-      timeout: 30000,
-      maxRedirects: 5,
-    });
+    let currentUrl = url;
+    let cookies = [];
+    let response;
+    const MAX_REDIRECTS = 10;
+
+    // Manually follow redirects to preserve cookies across hops
+    for (let i = 0; i < MAX_REDIRECTS; i++) {
+      console.log(`Fetching (attempt ${i + 1}): ${currentUrl}`);
+      response = await axios.get(currentUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          ...(cookies.length > 0 ? { 'Cookie': cookies.join('; ') } : {}),
+        },
+        timeout: 30000,
+        maxRedirects: 0,              // disable auto-redirects
+        validateStatus: (s) => s < 400, // accept 2xx and 3xx
+      });
+
+      // Collect any Set-Cookie headers
+      const setCookies = response.headers['set-cookie'];
+      if (setCookies) {
+        setCookies.forEach(c => {
+          const cookiePair = c.split(';')[0]; // take "name=value" part
+          cookies.push(cookiePair);
+        });
+      }
+
+      // If it's a redirect, follow the Location header
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers['location'];
+        if (!location) {
+          console.warn('Redirect with no Location header, stopping.');
+          break;
+        }
+        // Resolve relative URLs  
+        try {
+          currentUrl = new URL(location, currentUrl).href;
+        } catch {
+          currentUrl = location;
+        }
+        console.log(`Redirected (${response.status}) → ${currentUrl}`);
+        continue;
+      }
+
+      // Got a 2xx — we have the final page
+      break;
+    }
 
     const html = response.data;
     const $ = cheerio.load(html);
@@ -132,9 +174,14 @@ async function getEmailContent(url) {
       }
     });
 
+    console.log(`Successfully extracted: ${text.length} chars, ${links.length} links, ${images.length} images`);
     return { text, links, images };
   } catch (error) {
     console.error("Error fetching email content:", error.message);
+    if (error.response) {
+      console.error(`Response status: ${error.response.status}`);
+      console.error(`Response headers:`, JSON.stringify(error.response.headers, null, 2));
+    }
     throw new Error(`Failed to fetch email content: ${error.message}`);
   }
 }
