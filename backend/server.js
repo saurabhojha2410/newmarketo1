@@ -235,14 +235,35 @@ async function extractDoc(filePath) {
 }
 
 // ---------------------------------------------------------
-// DETAILED TEXT COMPARISON
+// DETAILED TEXT COMPARISON (side-by-side: doc vs email)
 // ---------------------------------------------------------
 const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
   // Split document into meaningful blocks (paragraphs/sentences)
-  const blocks = docText
+  const docBlocks = docText
     .split(/\n{1,2}/)
     .map((t) => t.trim())
     .filter((t) => t.length > 10); // Filter out very short blocks
+
+  // Split email text into comparable blocks for best-match finding
+  // Use sentence-like splitting since email text is flattened
+  const emailSentences = emailText
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?])\s+|(?<=\b(?:Read More|Learn More|Register Now|Sign Up|Get Started|Download|View|Click Here|Contact Us|Shop Now|Buy Now|Subscribe|Join|Explore))\s+/i)
+    .map(s => s.trim())
+    .filter(s => s.length > 5);
+
+  // Also create overlapping windows of email text for better matching
+  const emailWindows = [];
+  const words = emailText.replace(/\s+/g, ' ').split(' ');
+  // Create windows of varying sizes (10, 20, 40, 60 words)
+  [10, 20, 40, 60].forEach(windowSize => {
+    for (let i = 0; i <= words.length - windowSize; i += Math.floor(windowSize / 3)) {
+      emailWindows.push(words.slice(i, i + windowSize).join(' '));
+    }
+  });
+
+  // Combine sentences and windows for matching
+  const emailCandidates = [...emailSentences, ...emailWindows];
 
   const results = {
     matched: [],
@@ -251,7 +272,7 @@ const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
     metadata: [] // subject, preheader, etc.
   };
 
-  blocks.forEach((block) => {
+  docBlocks.forEach((block) => {
     const lower = block.toLowerCase();
 
     // Check if it's metadata (subject, preheader)
@@ -265,14 +286,47 @@ const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
       return;
     }
 
+    // Score against full email text (for overall match %)
     const { score, matchedWords, unmatchedWords, totalWords } = getSimilarityScore(block, emailText);
     const percentage = Math.round(score * 100);
 
+    // Find the best matching email block/segment
+    let bestEmailMatch = '';
+    let bestEmailScore = 0;
+
+    emailCandidates.forEach(candidate => {
+      const candidateScore = getSimilarityScore(block, candidate).score;
+      // Also check reverse: how well does the candidate match the block
+      const reverseScore = getSimilarityScore(candidate, block).score;
+      // Use average of both directions for better matching
+      const avgScore = (candidateScore + reverseScore) / 2;
+
+      if (avgScore > bestEmailScore) {
+        bestEmailScore = avgScore;
+        bestEmailMatch = candidate;
+      }
+    });
+
+    // If no good candidate found, try to extract a surrounding context from email
+    if (bestEmailScore < 0.3 && matchedWords.length > 0) {
+      // Find where the first matched word appears in email and extract context
+      const emailLower = emailText.toLowerCase();
+      const firstMatch = matchedWords[0];
+      const idx = emailLower.indexOf(firstMatch.toLowerCase());
+      if (idx !== -1) {
+        const start = Math.max(0, idx - 100);
+        const end = Math.min(emailText.length, idx + block.length + 100);
+        bestEmailMatch = (start > 0 ? '...' : '') + emailText.substring(start, end).trim() + (end < emailText.length ? '...' : '');
+      }
+    }
+
     const blockResult = {
-      originalText: block,
+      originalText: block,           // Expected (from doc)
+      emailText: bestEmailMatch,     // Actual (from email)  
+      emailMatchScore: Math.round(bestEmailScore * 100),
       matchPercentage: percentage,
-      matchedWords: matchedWords.slice(0, 10), // Limit for readability
-      unmatchedWords: unmatchedWords.slice(0, 10),
+      matchedWords: matchedWords.slice(0, 15), // Increased limit
+      unmatchedWords: unmatchedWords.slice(0, 15),
       totalWords: totalWords
     };
 

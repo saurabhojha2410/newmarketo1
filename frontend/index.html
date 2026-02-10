@@ -620,6 +620,115 @@
       word-break: break-word;
     }
 
+    /* Side-by-side comparison */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .comparison-pane {
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      line-height: 1.7;
+      word-break: break-word;
+      position: relative;
+    }
+
+    .comparison-pane.expected {
+      background: rgba(102, 126, 234, 0.08);
+      border: 1px solid rgba(102, 126, 234, 0.2);
+    }
+
+    .comparison-pane.actual {
+      background: rgba(56, 239, 125, 0.05);
+      border: 1px solid rgba(56, 239, 125, 0.15);
+    }
+
+    .comparison-pane.actual.mismatch {
+      background: rgba(244, 92, 67, 0.05);
+      border: 1px solid rgba(244, 92, 67, 0.15);
+    }
+
+    .comparison-pane.actual.empty-match {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+
+    .pane-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+
+    .pane-label.expected {
+      background: rgba(102, 126, 234, 0.15);
+      color: #667eea;
+    }
+
+    .pane-label.actual {
+      background: rgba(56, 239, 125, 0.12);
+      color: #38ef7d;
+    }
+
+    .pane-label.actual.mismatch {
+      background: rgba(244, 92, 67, 0.12);
+      color: var(--error-color);
+    }
+
+    .pane-text {
+      color: var(--text-primary);
+    }
+
+    .pane-empty {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .comparison-verdict {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+
+    .comparison-verdict.match {
+      background: rgba(56, 239, 125, 0.08);
+      color: var(--success-color);
+      border: 1px solid rgba(56, 239, 125, 0.15);
+    }
+
+    .comparison-verdict.partial {
+      background: rgba(255, 183, 77, 0.08);
+      color: var(--warning-color);
+      border: 1px solid rgba(255, 183, 77, 0.15);
+    }
+
+    .comparison-verdict.missing {
+      background: rgba(244, 92, 67, 0.08);
+      color: var(--error-color);
+      border: 1px solid rgba(244, 92, 67, 0.15);
+    }
+
     .word-analysis {
       display: flex;
       flex-wrap: wrap;
@@ -1624,6 +1733,19 @@
     function renderComparisonBlock(item, type) {
       const statusEmoji = type === 'matched' ? '✅' : type === 'partial' ? '⚠️' : '❌';
       const statusText = type === 'matched' ? 'FULL MATCH' : type === 'partial' ? 'PARTIAL MATCH' : 'NOT FOUND';
+      const verdictClass = type === 'matched' ? 'match' : type === 'partial' ? 'partial' : 'missing';
+      const actualPaneClass = type === 'matched' ? '' : type === 'partial' ? '' : 'mismatch';
+
+      const hasEmailText = item.emailText && item.emailText.trim().length > 0;
+
+      let verdictMsg = '';
+      if (type === 'matched') {
+        verdictMsg = `Content matches — ${item.matchPercentage}% word overlap`;
+      } else if (type === 'partial') {
+        verdictMsg = `Partial match — ${item.matchPercentage}% of words found. Review differences below.`;
+      } else {
+        verdictMsg = `Content not found in email — only ${item.matchPercentage}% word overlap detected.`;
+      }
 
       return `
         <div class="comparison-block ${type}">
@@ -1633,7 +1755,26 @@
               ${item.matchPercentage}% match
             </span>
           </div>
-          <div class="block-text">${escapeHtml(item.originalText)}</div>
+
+          <div class="comparison-grid">
+            <div class="comparison-pane expected">
+              <div class="pane-label expected">📄 Expected (Copy Guide)</div>
+              <div class="pane-text">${escapeHtml(item.originalText)}</div>
+            </div>
+            <div class="comparison-pane actual ${actualPaneClass} ${!hasEmailText ? 'empty-match' : ''}">
+              <div class="pane-label actual ${actualPaneClass}">📧 Actual (Email Template)</div>
+              ${hasEmailText
+          ? `<div class="pane-text">${escapeHtml(item.emailText)}</div>`
+          : `<div class="pane-empty">No matching content found in email</div>`
+        }
+            </div>
+          </div>
+
+          <div class="comparison-verdict ${verdictClass}">
+            <span>${statusEmoji}</span>
+            <span>${verdictMsg}</span>
+          </div>
+
           <div class="word-analysis">
             ${item.matchedWords.length > 0 ? `
               <div class="word-group">
@@ -1643,7 +1784,7 @@
             ` : ''}
             ${item.unmatchedWords.length > 0 ? `
               <div class="word-group">
-                <div class="word-group-label">✗ Not Found (${item.unmatchedWords.length})</div>
+                <div class="word-group-label">✗ Missing Words (${item.unmatchedWords.length})</div>
                 ${item.unmatchedWords.map(w => `<span class="word-tag unmatched">${escapeHtml(w)}</span>`).join('')}
               </div>
             ` : ''}
