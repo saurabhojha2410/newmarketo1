@@ -121,11 +121,12 @@ async function getEmailContent(url) {
       }
     });
 
-    // Extract images
+    // Extract images (distinguish missing alt vs empty alt)
     const images = [];
     $('img').each((_, element) => {
       const src = $(element).attr('src') || '';
-      const alt = $(element).attr('alt') || '';
+      const hasAltAttr = element.attribs && 'alt' in element.attribs;
+      const alt = hasAltAttr ? $(element).attr('alt') : undefined;
       if (src) {
         images.push({ src, alt });
       }
@@ -259,6 +260,134 @@ const compareLinks = (docLinks, emailLinks) => {
 };
 
 // ---------------------------------------------------------
+// IMAGE ALT TAG CHECK
+// ---------------------------------------------------------
+function checkImageAltTags(images) {
+  const results = [];
+  let missingCount = 0;
+  let emptyCount = 0;
+  let genericCount = 0;
+  let validCount = 0;
+
+  // Common generic/placeholder alt text patterns
+  const genericPatterns = [
+    /^image$/i,
+    /^img$/i,
+    /^photo$/i,
+    /^picture$/i,
+    /^banner$/i,
+    /^logo$/i,
+    /^icon$/i,
+    /^spacer$/i,
+    /^pixel$/i,
+    /^untitled$/i,
+    /^\d+$/,
+    /^image\s*\d+$/i,
+    /^img\s*\d+$/i,
+    /^dsc\d+$/i,
+    /^screenshot/i,
+    /^\.\w+$/,           // just a file extension like ".jpg"
+    /^https?:\/\//i,     // URL used as alt text
+  ];
+
+  // Image src patterns that are decorative/tracking pixels
+  const decorativePatterns = [
+    /spacer/i,
+    /pixel/i,
+    /tracking/i,
+    /blank\.gif/i,
+    /1x1/i,
+    /transparent/i,
+    /shim/i,
+  ];
+
+  images.forEach((img, index) => {
+    const src = img.src || '';
+    const alt = (img.alt || '').trim();
+
+    // Check if it's likely a decorative/tracking pixel
+    const isDecorative = decorativePatterns.some(p => p.test(src)) ||
+      (src.includes('width=1') && src.includes('height=1'));
+
+    let status, severity, message;
+
+    if (!img.alt && img.alt !== '') {
+      // alt attribute is completely missing from the <img> tag
+      status = 'MISSING';
+      severity = isDecorative ? 'low' : 'high';
+      message = isDecorative
+        ? 'Alt attribute missing (likely decorative/tracking pixel)'
+        : 'Alt attribute is completely missing — accessibility issue';
+      missingCount++;
+    } else if (alt === '') {
+      // alt="" (empty) — acceptable for decorative images
+      if (isDecorative) {
+        status = 'OK';
+        severity = 'none';
+        message = 'Empty alt text (decorative image — acceptable)';
+        validCount++;
+      } else {
+        status = 'EMPTY';
+        severity = 'medium';
+        message = 'Alt text is empty — should have descriptive text unless purely decorative';
+        emptyCount++;
+      }
+    } else if (genericPatterns.some(p => p.test(alt))) {
+      // Generic/placeholder alt text
+      status = 'GENERIC';
+      severity = 'medium';
+      message = `Alt text "${alt}" appears generic or auto-generated`;
+      genericCount++;
+    } else {
+      // Has meaningful alt text
+      status = 'OK';
+      severity = 'none';
+      message = 'Has descriptive alt text';
+      validCount++;
+    }
+
+    // Extract a readable filename from src
+    let srcLabel = src;
+    try {
+      const urlObj = new URL(src);
+      srcLabel = urlObj.pathname.split('/').pop() || src;
+    } catch {
+      srcLabel = src.split('/').pop() || src;
+    }
+    // Truncate long src labels
+    if (srcLabel.length > 60) srcLabel = srcLabel.substring(0, 57) + '...';
+
+    results.push({
+      index: index + 1,
+      src: src,
+      srcLabel,
+      alt: img.alt,
+      altDisplay: alt || (img.alt === '' ? '(empty)' : '(missing)'),
+      status,
+      severity,
+      message,
+      isDecorative,
+    });
+  });
+
+  const totalImages = images.length;
+  const issueCount = missingCount + emptyCount + genericCount;
+
+  return {
+    results,
+    summary: {
+      totalImages,
+      missingAlt: missingCount,
+      emptyAlt: emptyCount,
+      genericAlt: genericCount,
+      validAlt: validCount,
+      issueCount,
+      status: issueCount === 0 ? 'PASS' : (missingCount > 0 ? 'FAIL' : 'WARNING'),
+    },
+  };
+}
+
+// ---------------------------------------------------------
 // RESPONSIVE CHECK (using free screenshot API)
 // ---------------------------------------------------------
 async function checkResponsive(url) {
@@ -319,8 +448,12 @@ async function checkResponsive(url) {
 // FORMAT OUTPUT AS JSON
 // ---------------------------------------------------------
 function formatResultJSON(data) {
+  const hasTextIssues = data.textComparison.summary.notFound.length > 0;
+  const hasMissingLinks = data.missingDocLinks.length > 0;
+  const hasAltIssues = data.imageAltCheck && data.imageAltCheck.summary.missingAlt > 0;
+
   return {
-    overallStatus: data.textComparison.summary.notFound.length === 0 && data.missingDocLinks.length === 0 ? "PASS" : "FAIL",
+    overallStatus: (hasTextIssues || hasMissingLinks || hasAltIssues) ? "FAIL" : "PASS",
     textComparison: {
       summary: data.textComparison.summary,
       details: {
@@ -339,6 +472,7 @@ function formatResultJSON(data) {
       details: data.linkReport,
       missingLinks: data.missingDocLinks
     },
+    imageAltCheck: data.imageAltCheck || { results: [], summary: { totalImages: 0, issueCount: 0, status: 'PASS' } },
     responsive: data.responsive,
     responsiveDetails: data.responsiveDetails || null
   };
@@ -362,8 +496,8 @@ app.post("/qa", upload.single("file"), async (req, res) => {
     const { docText, docLinks } = await extractDoc(file.path);
     console.log(`Extracted ${docLinks.length} links from document`);
 
-    const { text: emailText, links: emailLinks } = await getEmailContent(emailUrl);
-    console.log(`Extracted ${emailLinks.length} links from email`);
+    const { text: emailText, links: emailLinks, images: emailImages } = await getEmailContent(emailUrl);
+    console.log(`Extracted ${emailLinks.length} links and ${emailImages.length} images from email`);
 
     // Use new detailed comparison
     const textComparison = compareTextDetailed(docText, emailText);
@@ -372,6 +506,10 @@ app.post("/qa", upload.single("file"), async (req, res) => {
       docLinks,
       emailLinks
     );
+
+    // Check image alt tags
+    const imageAltCheck = checkImageAltTags(emailImages);
+    console.log(`Image alt check: ${imageAltCheck.summary.totalImages} images, ${imageAltCheck.summary.issueCount} issues`);
 
     // Check responsive design
     const { responsive, details: responsiveDetails } = await checkResponsive(emailUrl);
@@ -384,6 +522,7 @@ app.post("/qa", upload.single("file"), async (req, res) => {
       textComparison,
       linkReport,
       missingDocLinks,
+      imageAltCheck,
       responsive,
       responsiveDetails
     });

@@ -661,6 +661,155 @@
       color: var(--error-color);
     }
 
+    /* Image alt tag results */
+    .image-alt-item {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid var(--glass-border);
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      transition: all 0.2s ease;
+    }
+
+    .image-alt-item:hover {
+      background: rgba(0, 0, 0, 0.3);
+      border-color: rgba(102, 126, 234, 0.3);
+    }
+
+    .image-alt-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+
+    .image-alt-icon.ok {
+      background: rgba(56, 239, 125, 0.15);
+    }
+
+    .image-alt-icon.missing {
+      background: rgba(244, 92, 67, 0.15);
+    }
+
+    .image-alt-icon.empty {
+      background: rgba(255, 183, 77, 0.15);
+    }
+
+    .image-alt-icon.generic {
+      background: rgba(255, 183, 77, 0.15);
+    }
+
+    .image-alt-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .image-alt-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .image-alt-index {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .image-alt-severity {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .image-alt-severity.high {
+      background: rgba(244, 92, 67, 0.2);
+      color: var(--error-color);
+    }
+
+    .image-alt-severity.medium {
+      background: rgba(255, 183, 77, 0.2);
+      color: var(--warning-color);
+    }
+
+    .image-alt-severity.low {
+      background: rgba(102, 126, 234, 0.2);
+      color: #667eea;
+    }
+
+    .image-alt-severity.none {
+      background: rgba(56, 239, 125, 0.15);
+      color: var(--success-color);
+    }
+
+    .image-alt-src {
+      font-size: 12px;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-bottom: 4px;
+    }
+
+    .image-alt-text {
+      font-size: 13px;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .image-alt-text code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .image-alt-message {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .image-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .image-summary-card {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      border: 1px solid var(--glass-border);
+    }
+
+    .image-summary-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .image-summary-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+
     /* Link comparison */
     .link-item {
       background: rgba(0, 0, 0, 0.2);
@@ -1041,6 +1190,7 @@
           <div class="tabs" id="tabs">
             <button class="tab-btn active" data-tab="text">📝 Text Comparison</button>
             <button class="tab-btn" data-tab="links">🔗 Links</button>
+            <button class="tab-btn" data-tab="images">🖼️ Image Alt Tags</button>
             <button class="tab-btn" data-tab="previews">📱 Previews</button>
           </div>
 
@@ -1051,6 +1201,10 @@
 
           <div class="tab-content" id="tab-links">
             <div id="linkResults"></div>
+          </div>
+
+          <div class="tab-content" id="tab-images">
+            <div id="imageResults"></div>
           </div>
 
           <div class="tab-content" id="tab-previews">
@@ -1190,6 +1344,8 @@
       const textSummary = data.textComparison.summary;
       const linkSummary = data.linkComparison.summary;
 
+      const imgSummary = data.imageAltCheck ? data.imageAltCheck.summary : { totalImages: 0, issueCount: 0 };
+
       summaryStats.innerHTML = `
         <div class="stat-item">
           <div class="stat-value primary">${textSummary.overallScore}%</div>
@@ -1215,6 +1371,14 @@
           <div class="stat-value error">${linkSummary.missing}</div>
           <div class="stat-label">Links Missing</div>
         </div>
+        <div class="stat-item">
+          <div class="stat-value ${imgSummary.issueCount > 0 ? 'error' : 'success'}">${imgSummary.issueCount}</div>
+          <div class="stat-label">Img Alt Issues</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value primary">${imgSummary.totalImages}</div>
+          <div class="stat-label">Total Images</div>
+        </div>
       `;
 
       // Update tab counts
@@ -1227,6 +1391,10 @@
         <button class="tab-btn" data-tab="links">
           🔗 Links
           <span class="tab-count">${linkSummary.totalLinks}</span>
+        </button>
+        <button class="tab-btn" data-tab="images">
+          🖼️ Image Alt Tags
+          <span class="tab-count" style="${imgSummary.issueCount > 0 ? 'background: rgba(244,92,67,0.2); color: var(--error-color);' : ''}">${imgSummary.totalImages}</span>
         </button>
         <button class="tab-btn" data-tab="previews">📱 Previews</button>
       `;
@@ -1312,6 +1480,87 @@
       }
 
       linkResults.innerHTML = linkHtml;
+
+      // Image Alt Tag Results
+      const imageResults = document.getElementById('imageResults');
+      let imageHtml = '';
+
+      if (data.imageAltCheck && data.imageAltCheck.results.length > 0) {
+        const imgSum = data.imageAltCheck.summary;
+
+        // Summary cards
+        imageHtml += `
+          <div class="image-summary-grid">
+            <div class="image-summary-card">
+              <div class="image-summary-value" style="color: var(--text-primary);">${imgSum.totalImages}</div>
+              <div class="image-summary-label">Total Images</div>
+            </div>
+            <div class="image-summary-card">
+              <div class="image-summary-value" style="color: var(--success-color);">${imgSum.validAlt}</div>
+              <div class="image-summary-label">Valid Alt</div>
+            </div>
+            <div class="image-summary-card">
+              <div class="image-summary-value" style="color: var(--error-color);">${imgSum.missingAlt}</div>
+              <div class="image-summary-label">Missing Alt</div>
+            </div>
+            <div class="image-summary-card">
+              <div class="image-summary-value" style="color: var(--warning-color);">${imgSum.emptyAlt}</div>
+              <div class="image-summary-label">Empty Alt</div>
+            </div>
+            <div class="image-summary-card">
+              <div class="image-summary-value" style="color: var(--warning-color);">${imgSum.genericAlt}</div>
+              <div class="image-summary-label">Generic Alt</div>
+            </div>
+          </div>
+        `;
+
+        // Overall status banner
+        const altStatus = imgSum.status;
+        const statusColor = altStatus === 'PASS' ? 'var(--success-color)' : altStatus === 'FAIL' ? 'var(--error-color)' : 'var(--warning-color)';
+        const statusIcon = altStatus === 'PASS' ? '✅' : altStatus === 'FAIL' ? '❌' : '⚠️';
+        imageHtml += `
+          <div style="padding: 14px 20px; background: rgba(0,0,0,0.2); border-radius: 10px; border-left: 4px solid ${statusColor}; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 18px;">${statusIcon}</span>
+            <span style="color: ${statusColor}; font-weight: 600; font-size: 14px;">
+              Image Alt Tag Check: ${altStatus}
+            </span>
+            <span style="color: var(--text-muted); font-size: 13px; margin-left: auto;">
+              ${imgSum.issueCount === 0 ? 'All images have proper alt text' : `${imgSum.issueCount} issue${imgSum.issueCount > 1 ? 's' : ''} found`}
+            </span>
+          </div>
+        `;
+
+        // Individual image results - show issues first
+        const sortedResults = [...data.imageAltCheck.results].sort((a, b) => {
+          const order = { MISSING: 0, EMPTY: 1, GENERIC: 2, OK: 3 };
+          return (order[a.status] || 3) - (order[b.status] || 3);
+        });
+
+        sortedResults.forEach(img => {
+          const iconClass = img.status === 'OK' ? 'ok' : img.status === 'MISSING' ? 'missing' : img.status === 'EMPTY' ? 'empty' : 'generic';
+          const icon = img.status === 'OK' ? '✅' : img.status === 'MISSING' ? '❌' : '⚠️';
+
+          imageHtml += `
+            <div class="image-alt-item">
+              <div class="image-alt-icon ${iconClass}">${icon}</div>
+              <div class="image-alt-details">
+                <div class="image-alt-top">
+                  <span class="image-alt-index">#${img.index}</span>
+                  <span class="image-alt-severity ${img.severity}">${img.status}</span>
+                  ${img.isDecorative ? '<span style="font-size: 10px; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">🔍 Decorative</span>' : ''}
+                </div>
+                <div class="image-alt-src">📁 ${escapeHtml(img.srcLabel)}</div>
+                <div class="image-alt-text">Alt: <code>${escapeHtml(img.altDisplay)}</code></div>
+                <div class="image-alt-message">${escapeHtml(img.message)}</div>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        imageHtml = '<div class="empty-state"><div class="empty-state-icon">🖼️</div><p>No images found in email</p></div>';
+      }
+
+      imageResults.innerHTML = imageHtml;
 
       // Previews - now shows responsive analysis instead of screenshots
       let previewHtml = `
