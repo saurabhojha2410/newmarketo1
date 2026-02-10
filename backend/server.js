@@ -46,26 +46,45 @@ const normalize = (text = "") =>
     .trim();
 
 // ---------------------------------------------------------
-// SIMILARITY SCORE (word-based)
+// SIMILARITY SCORE (word-based, bidirectional F1)
 // ---------------------------------------------------------
-const getSimilarityScore = (docBlock, emailText) => {
-  const docWords = normalize(docBlock).split(" ").filter(Boolean);
-  const emailWords = normalize(emailText).split(" ").filter(Boolean);
-  if (!docWords.length) return { score: 0, matchedWords: [], unmatchedWords: docWords };
+const getSimilarityScore = (textA, textB) => {
+  const wordsA = normalize(textA).split(" ").filter(Boolean);
+  const wordsB = normalize(textB).split(" ").filter(Boolean);
+  if (!wordsA.length) return { score: 0, matchedWords: [], unmatchedWords: wordsA, extraWords: [], totalWords: 0 };
 
   const matchedWords = [];
   const unmatchedWords = [];
 
-  docWords.forEach(word => {
-    if (emailWords.includes(word)) {
+  wordsA.forEach(word => {
+    if (wordsB.includes(word)) {
       matchedWords.push(word);
     } else {
       unmatchedWords.push(word);
     }
   });
 
-  const score = matchedWords.length / docWords.length;
-  return { score, matchedWords, unmatchedWords, totalWords: docWords.length };
+  // Words in B that are NOT in A (extra content)
+  const wordsASet = new Set(wordsA.map(w => w.toLowerCase()));
+  const extraWords = wordsB.filter(w => !wordsASet.has(w.toLowerCase()));
+
+  // Precision: of doc words, how many found in email?
+  const precision = wordsA.length > 0 ? matchedWords.length / wordsA.length : 0;
+  // Recall: of email words, how many came from doc? (penalizes extra content)
+  const recall = wordsB.length > 0 ? matchedWords.length / wordsB.length : 0;
+  // F1 score: harmonic mean — balances both directions
+  const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+
+  return {
+    score: f1,
+    precision,
+    recall,
+    matchedWords,
+    unmatchedWords,    // doc words NOT in email
+    extraWords,        // email words NOT in doc
+    totalWords: wordsA.length,
+    totalEmailWords: wordsB.length
+  };
 };
 
 // ---------------------------------------------------------
@@ -235,6 +254,77 @@ async function extractDoc(filePath) {
 }
 
 // ---------------------------------------------------------
+// FIND BEST EMAIL SEGMENT for a doc block
+// Uses word-position clustering to find where the content
+// actually lives in the email, then extracts a clean segment
+// ---------------------------------------------------------
+function findBestEmailSegment(docBlock, emailText) {
+  const docNorm = normalize(docBlock);
+  const docWords = docNorm.split(" ").filter(Boolean);
+  if (!docWords.length || !emailText) return { segment: '', score: 0, precision: 0, recall: 0 };
+
+  const emailClean = emailText.replace(/\s+/g, ' ').trim();
+  const emailNorm = normalize(emailText);
+  const emailWords = emailNorm.split(" ").filter(Boolean);
+  if (!emailWords.length) return { segment: '', score: 0, precision: 0, recall: 0 };
+
+  // Build a map of original-text word boundaries so we can extract clean text later
+  const emailCleanWords = emailClean.split(' ');
+
+  // Find positions where doc words appear in the email word array
+  const positions = [];
+  docWords.forEach(dw => {
+    emailWords.forEach((ew, idx) => {
+      if (dw === ew) positions.push(idx);
+    });
+  });
+
+  if (positions.length === 0) return { segment: '', score: 0, precision: 0, recall: 0 };
+  positions.sort((a, b) => a - b);
+
+  // Find the best span: a range of ~docWords.length words that contains the most matches
+  const targetLen = docWords.length;
+  let bestSpanStart = 0;
+  let bestSpanEnd = Math.min(targetLen - 1, emailWords.length - 1);
+  let bestCount = 0;
+
+  for (let i = 0; i < positions.length; i++) {
+    const spanStart = positions[i];
+    // Allow the span to be up to 30% wider than the doc block
+    const spanEnd = Math.min(spanStart + targetLen + Math.ceil(targetLen * 0.3), emailWords.length - 1);
+
+    let count = 0;
+    for (let j = i; j < positions.length && positions[j] <= spanEnd; j++) {
+      count++;
+    }
+
+    if (count > bestCount) {
+      bestCount = count;
+      bestSpanStart = spanStart;
+      bestSpanEnd = spanEnd;
+    }
+  }
+
+  // Extract the segment from original email text using word positions
+  const segWords = emailCleanWords.slice(bestSpanStart, bestSpanEnd + 1);
+  let segment = segWords.join(' ');
+
+  // Add ellipsis if not at boundaries
+  if (bestSpanStart > 0) segment = '...' + segment;
+  if (bestSpanEnd < emailCleanWords.length - 1) segment = segment + '...';
+
+  // Score this segment against the doc block using F1
+  const segScore = getSimilarityScore(docBlock, segment);
+
+  return {
+    segment,
+    score: segScore.score,
+    precision: segScore.precision,
+    recall: segScore.recall
+  };
+}
+
+// ---------------------------------------------------------
 // DETAILED TEXT COMPARISON (side-by-side: doc vs email)
 // ---------------------------------------------------------
 const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
@@ -242,34 +332,13 @@ const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
   const docBlocks = docText
     .split(/\n{1,2}/)
     .map((t) => t.trim())
-    .filter((t) => t.length > 10); // Filter out very short blocks
-
-  // Split email text into comparable blocks for best-match finding
-  // Use sentence-like splitting since email text is flattened
-  const emailSentences = emailText
-    .replace(/\s+/g, ' ')
-    .split(/(?<=[.!?])\s+|(?<=\b(?:Read More|Learn More|Register Now|Sign Up|Get Started|Download|View|Click Here|Contact Us|Shop Now|Buy Now|Subscribe|Join|Explore))\s+/i)
-    .map(s => s.trim())
-    .filter(s => s.length > 5);
-
-  // Also create overlapping windows of email text for better matching
-  const emailWindows = [];
-  const words = emailText.replace(/\s+/g, ' ').split(' ');
-  // Create windows of varying sizes (10, 20, 40, 60 words)
-  [10, 20, 40, 60].forEach(windowSize => {
-    for (let i = 0; i <= words.length - windowSize; i += Math.floor(windowSize / 3)) {
-      emailWindows.push(words.slice(i, i + windowSize).join(' '));
-    }
-  });
-
-  // Combine sentences and windows for matching
-  const emailCandidates = [...emailSentences, ...emailWindows];
+    .filter((t) => t.length > 10);
 
   const results = {
     matched: [],
     partialMatch: [],
     notFound: [],
-    metadata: [] // subject, preheader, etc.
+    metadata: []
   };
 
   docBlocks.forEach((block) => {
@@ -286,54 +355,30 @@ const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
       return;
     }
 
-    // Score against full email text (for overall match %)
-    const { score, matchedWords, unmatchedWords, totalWords } = getSimilarityScore(block, emailText);
-    const percentage = Math.round(score * 100);
+    // Find the best matching email segment using position-based search
+    const { segment: emailSegment, score: segmentScore, precision, recall } = findBestEmailSegment(block, emailText);
+    const percentage = Math.round(segmentScore * 100);
 
-    // Find the best matching email block/segment
-    let bestEmailMatch = '';
-    let bestEmailScore = 0;
-
-    emailCandidates.forEach(candidate => {
-      const candidateScore = getSimilarityScore(block, candidate).score;
-      // Also check reverse: how well does the candidate match the block
-      const reverseScore = getSimilarityScore(candidate, block).score;
-      // Use average of both directions for better matching
-      const avgScore = (candidateScore + reverseScore) / 2;
-
-      if (avgScore > bestEmailScore) {
-        bestEmailScore = avgScore;
-        bestEmailMatch = candidate;
-      }
-    });
-
-    // If no good candidate found, try to extract a surrounding context from email
-    if (bestEmailScore < 0.3 && matchedWords.length > 0) {
-      // Find where the first matched word appears in email and extract context
-      const emailLower = emailText.toLowerCase();
-      const firstMatch = matchedWords[0];
-      const idx = emailLower.indexOf(firstMatch.toLowerCase());
-      if (idx !== -1) {
-        const start = Math.max(0, idx - 100);
-        const end = Math.min(emailText.length, idx + block.length + 100);
-        bestEmailMatch = (start > 0 ? '...' : '') + emailText.substring(start, end).trim() + (end < emailText.length ? '...' : '');
-      }
-    }
+    // Get word-level details
+    const { matchedWords, unmatchedWords, extraWords, totalWords, totalEmailWords } = getSimilarityScore(block, emailSegment);
 
     const blockResult = {
-      originalText: block,           // Expected (from doc)
-      emailText: bestEmailMatch,     // Actual (from email)  
-      emailMatchScore: Math.round(bestEmailScore * 100),
-      matchPercentage: percentage,
-      matchedWords: matchedWords.slice(0, 15), // Increased limit
+      originalText: block,              // Expected (from doc)
+      emailText: emailSegment,          // Actual (from email)
+      matchPercentage: percentage,       // F1 score against the segment
+      precision: Math.round((precision || 0) * 100),  // % of doc words found
+      recall: Math.round((recall || 0) * 100),        // % of email segment from doc
+      matchedWords: matchedWords.slice(0, 15),
       unmatchedWords: unmatchedWords.slice(0, 15),
-      totalWords: totalWords
+      extraWords: (extraWords || []).slice(0, 10),
+      totalWords: totalWords,
+      totalEmailWords: totalEmailWords || 0
     };
 
-    if (score >= 0.9) {
+    if (segmentScore >= 0.9) {
       blockResult.status = "FULL MATCH";
       results.matched.push(blockResult);
-    } else if (score >= threshold) {
+    } else if (segmentScore >= threshold) {
       blockResult.status = "PARTIAL MATCH";
       results.partialMatch.push(blockResult);
     } else {

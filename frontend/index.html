@@ -1740,11 +1740,11 @@
 
       let verdictMsg = '';
       if (type === 'matched') {
-        verdictMsg = `Content matches — ${item.matchPercentage}% word overlap`;
+        verdictMsg = `Content matches — ${item.matchPercentage}% similarity (${item.precision || item.matchPercentage}% of doc found, ${item.recall || item.matchPercentage}% of email from doc)`;
       } else if (type === 'partial') {
-        verdictMsg = `Partial match — ${item.matchPercentage}% of words found. Review differences below.`;
+        verdictMsg = `Partial match — ${item.matchPercentage}% similarity. ${item.precision || '?'}% of doc words found, but email has extra content (${item.recall || '?'}% overlap). Review differences below.`;
       } else {
-        verdictMsg = `Content not found in email — only ${item.matchPercentage}% word overlap detected.`;
+        verdictMsg = `Content not found in email — only ${item.matchPercentage}% similarity detected.`;
       }
 
       return `
@@ -1784,8 +1784,14 @@
             ` : ''}
             ${item.unmatchedWords.length > 0 ? `
               <div class="word-group">
-                <div class="word-group-label">✗ Missing Words (${item.unmatchedWords.length})</div>
+                <div class="word-group-label">✗ Missing from Email (${item.unmatchedWords.length})</div>
                 ${item.unmatchedWords.map(w => `<span class="word-tag unmatched">${escapeHtml(w)}</span>`).join('')}
+              </div>
+            ` : ''}
+            ${item.extraWords && item.extraWords.length > 0 ? `
+              <div class="word-group">
+                <div class="word-group-label">➕ Extra in Email (${item.extraWords.length})</div>
+                ${item.extraWords.map(w => `<span class="word-tag" style="background: rgba(102, 126, 234, 0.15); color: #667eea;">${escapeHtml(w)}</span>`).join('')}
               </div>
             ` : ''}
           </div>
