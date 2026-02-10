@@ -123,16 +123,42 @@ async function getEmailContent(url) {
 
       // If it's a redirect, follow the Location header
       if ([301, 302, 303, 307, 308].includes(response.status)) {
-        const location = response.headers['location'];
-        if (!location) {
-          console.warn('Redirect with no Location header, stopping.');
+        let nextUrl = response.headers['location'];
+
+        // If no Location header, check for JS-based redirect in body
+        if (!nextUrl && typeof response.data === 'string') {
+          console.log('No Location header — checking response body for JS redirect...');
+          const body = response.data;
+
+          // Pattern 1: var redirecturl = '...';
+          const jsRedirectMatch = body.match(/var\s+redirecturl\s*=\s*['"]([^'"]+)['"]/i);
+          // Pattern 2: window.location = '...' or window.location.href = '...'
+          const winLocMatch = body.match(/window\.(?:self\.)?location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/i);
+          // Pattern 3: window.location.replace('...')
+          const winReplaceMatch = body.match(/window\.location\.replace\s*\(\s*['"]([^'"]+)['"]\s*\)/i);
+          // Pattern 4: <meta http-equiv="refresh" content="0;url=...">
+          const metaRefreshMatch = body.match(/<meta[^>]*http-equiv\s*=\s*['"]refresh['"][^>]*content\s*=\s*['"][^'"]*url\s*=\s*([^'">\s]+)/i);
+
+          nextUrl = (jsRedirectMatch && jsRedirectMatch[1]) ||
+            (winLocMatch && winLocMatch[1]) ||
+            (winReplaceMatch && winReplaceMatch[1]) ||
+            (metaRefreshMatch && metaRefreshMatch[1]) ||
+            null;
+
+          if (nextUrl) {
+            console.log(`Found JS/meta redirect URL in response body`);
+          }
+        }
+
+        if (!nextUrl) {
+          console.warn('Redirect with no Location header and no JS redirect found, stopping.');
           break;
         }
         // Resolve relative URLs  
         try {
-          currentUrl = new URL(location, currentUrl).href;
+          currentUrl = new URL(nextUrl, currentUrl).href;
         } catch {
-          currentUrl = location;
+          currentUrl = nextUrl;
         }
         console.log(`Redirected (${response.status}) → ${currentUrl}`);
         continue;
@@ -175,7 +201,7 @@ async function getEmailContent(url) {
     });
 
     console.log(`Successfully extracted: ${text.length} chars, ${links.length} links, ${images.length} images`);
-    return { text, links, images };
+    return { text, links, images, resolvedUrl: currentUrl };
   } catch (error) {
     console.error("Error fetching email content:", error.message);
     if (error.response) {
@@ -543,8 +569,9 @@ app.post("/qa", upload.single("file"), async (req, res) => {
     const { docText, docLinks } = await extractDoc(file.path);
     console.log(`Extracted ${docLinks.length} links from document`);
 
-    const { text: emailText, links: emailLinks, images: emailImages } = await getEmailContent(emailUrl);
+    const { text: emailText, links: emailLinks, images: emailImages, resolvedUrl } = await getEmailContent(emailUrl);
     console.log(`Extracted ${emailLinks.length} links and ${emailImages.length} images from email`);
+    console.log(`Resolved URL: ${resolvedUrl}`);
 
     // Use new detailed comparison
     const textComparison = compareTextDetailed(docText, emailText);
@@ -558,8 +585,8 @@ app.post("/qa", upload.single("file"), async (req, res) => {
     const imageAltCheck = checkImageAltTags(emailImages);
     console.log(`Image alt check: ${imageAltCheck.summary.totalImages} images, ${imageAltCheck.summary.issueCount} issues`);
 
-    // Check responsive design
-    const { responsive, details: responsiveDetails } = await checkResponsive(emailUrl);
+    // Check responsive design (use resolved URL to avoid 302 issues)
+    const { responsive, details: responsiveDetails } = await checkResponsive(resolvedUrl || emailUrl);
 
     // Clean up uploaded file
     fs.unlinkSync(file.path);
