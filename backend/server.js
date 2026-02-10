@@ -193,10 +193,45 @@ async function getEmailContent(url) {
     // Remove script and style elements
     $('script, style, noscript').remove();
 
-    // Extract text content
+    // Extract text content (flat, for backward compat)
     const text = $('body').text()
       .replace(/\s+/g, ' ')
       .trim();
+
+    // Extract paragraph-level text blocks from the email HTML
+    // This preserves paragraph boundaries for accurate comparison
+    const paragraphs = [];
+    const blockSelectors = 'p, h1, h2, h3, h4, h5, h6, li, td, th, blockquote, caption';
+    $(blockSelectors).each((_, el) => {
+      // Skip if this element contains other block elements (avoid double-counting)
+      if ($(el).find(blockSelectors).length > 0 && el.tagName.toLowerCase() === 'td') {
+        return; // skip table cells that contain paragraphs
+      }
+      const txt = $(el).text().replace(/\s+/g, ' ').trim();
+      if (txt.length > 10) {
+        paragraphs.push(txt);
+      }
+    });
+
+    // Deduplicate paragraphs (some content may appear in nested elements)
+    const emailParagraphs = [];
+    paragraphs.forEach(p => {
+      // Only add if not a substring of an already-added paragraph
+      const isDuplicate = emailParagraphs.some(existing =>
+        existing.includes(p) || p.includes(existing)
+      );
+      if (!isDuplicate) {
+        emailParagraphs.push(p);
+      } else {
+        // If this is longer than an existing one it contains, replace it
+        const shorterIdx = emailParagraphs.findIndex(existing => p.includes(existing) && p.length > existing.length);
+        if (shorterIdx !== -1) {
+          emailParagraphs[shorterIdx] = p;
+        }
+      }
+    });
+
+    console.log(`Extracted ${emailParagraphs.length} paragraphs from email`);
 
     // Extract links
     const links = [];
@@ -220,7 +255,7 @@ async function getEmailContent(url) {
     });
 
     console.log(`Successfully extracted: ${text.length} chars, ${links.length} links, ${images.length} images`);
-    return { text, links, images, resolvedUrl: currentUrl };
+    return { text, links, images, emailParagraphs, resolvedUrl: currentUrl };
   } catch (error) {
     console.error("Error fetching email content:", error.message);
     if (error.response) {
@@ -255,79 +290,93 @@ async function extractDoc(filePath) {
 
 // ---------------------------------------------------------
 // FIND BEST EMAIL SEGMENT for a doc block
-// Uses word-position clustering to find where the content
-// actually lives in the email, then extracts a clean segment
+// Matches against actual email paragraphs for clean segments
 // ---------------------------------------------------------
-function findBestEmailSegment(docBlock, emailText) {
-  const docNorm = normalize(docBlock);
-  const docWords = docNorm.split(" ").filter(Boolean);
-  if (!docWords.length || !emailText) return { segment: '', score: 0, precision: 0, recall: 0 };
+function findBestEmailSegment(docBlock, emailParagraphs, emailTextFlat) {
+  if (!docBlock) return { segment: '', score: 0, precision: 0, recall: 0 };
 
-  const emailClean = emailText.replace(/\s+/g, ' ').trim();
-  const emailNorm = normalize(emailText);
-  const emailWords = emailNorm.split(" ").filter(Boolean);
-  if (!emailWords.length) return { segment: '', score: 0, precision: 0, recall: 0 };
+  let bestSegment = '';
+  let bestScore = 0;
+  let bestPrecision = 0;
+  let bestRecall = 0;
 
-  // Build a map of original-text word boundaries so we can extract clean text later
-  const emailCleanWords = emailClean.split(' ');
-
-  // Find positions where doc words appear in the email word array
-  const positions = [];
-  docWords.forEach(dw => {
-    emailWords.forEach((ew, idx) => {
-      if (dw === ew) positions.push(idx);
+  // Strategy 1: Match against individual email paragraphs
+  if (emailParagraphs && emailParagraphs.length > 0) {
+    emailParagraphs.forEach(para => {
+      const result = getSimilarityScore(docBlock, para);
+      if (result.score > bestScore) {
+        bestScore = result.score;
+        bestSegment = para;
+        bestPrecision = result.precision;
+        bestRecall = result.recall;
+      }
     });
-  });
 
-  if (positions.length === 0) return { segment: '', score: 0, precision: 0, recall: 0 };
-  positions.sort((a, b) => a - b);
+    // Also try combining consecutive paragraphs (2-3) for multi-paragraph doc blocks
+    for (let i = 0; i < emailParagraphs.length - 1; i++) {
+      const combined2 = emailParagraphs[i] + ' ' + emailParagraphs[i + 1];
+      const result2 = getSimilarityScore(docBlock, combined2);
+      if (result2.score > bestScore) {
+        bestScore = result2.score;
+        bestSegment = combined2;
+        bestPrecision = result2.precision;
+        bestRecall = result2.recall;
+      }
 
-  // Find the best span: a range of ~docWords.length words that contains the most matches
-  const targetLen = docWords.length;
-  let bestSpanStart = 0;
-  let bestSpanEnd = Math.min(targetLen - 1, emailWords.length - 1);
-  let bestCount = 0;
-
-  for (let i = 0; i < positions.length; i++) {
-    const spanStart = positions[i];
-    // Allow the span to be up to 30% wider than the doc block
-    const spanEnd = Math.min(spanStart + targetLen + Math.ceil(targetLen * 0.3), emailWords.length - 1);
-
-    let count = 0;
-    for (let j = i; j < positions.length && positions[j] <= spanEnd; j++) {
-      count++;
-    }
-
-    if (count > bestCount) {
-      bestCount = count;
-      bestSpanStart = spanStart;
-      bestSpanEnd = spanEnd;
+      if (i < emailParagraphs.length - 2) {
+        const combined3 = combined2 + ' ' + emailParagraphs[i + 2];
+        const result3 = getSimilarityScore(docBlock, combined3);
+        if (result3.score > bestScore) {
+          bestScore = result3.score;
+          bestSegment = combined3;
+          bestPrecision = result3.precision;
+          bestRecall = result3.recall;
+        }
+      }
     }
   }
 
-  // Extract the segment from original email text using word positions
-  const segWords = emailCleanWords.slice(bestSpanStart, bestSpanEnd + 1);
-  let segment = segWords.join(' ');
-
-  // Add ellipsis if not at boundaries
-  if (bestSpanStart > 0) segment = '...' + segment;
-  if (bestSpanEnd < emailCleanWords.length - 1) segment = segment + '...';
-
-  // Score this segment against the doc block using F1
-  const segScore = getSimilarityScore(docBlock, segment);
+  // Strategy 2: If no good paragraph match and we have flat text, use it as fallback
+  if (bestScore < 0.4 && emailTextFlat) {
+    const flatResult = getSimilarityScore(docBlock, emailTextFlat);
+    if (flatResult.precision > 0.5) {
+      // Content exists somewhere in email but wasn't in a clean paragraph
+      // Extract a rough context
+      const docWords = normalize(docBlock).split(' ').filter(Boolean);
+      const emailLower = emailTextFlat.toLowerCase();
+      // Find a distinctive word from the doc
+      const longWords = docWords.filter(w => w.length > 5).slice(0, 3);
+      for (const word of longWords) {
+        const idx = emailLower.indexOf(word);
+        if (idx !== -1) {
+          const start = Math.max(0, emailTextFlat.lastIndexOf(' ', Math.max(0, idx - 20)));
+          const end = Math.min(emailTextFlat.length, emailTextFlat.indexOf(' ', idx + docBlock.length + 20) || emailTextFlat.length);
+          const context = emailTextFlat.substring(start, end).trim();
+          const ctxResult = getSimilarityScore(docBlock, context);
+          if (ctxResult.score > bestScore) {
+            bestScore = ctxResult.score;
+            bestSegment = (start > 0 ? '...' : '') + context + (end < emailTextFlat.length ? '...' : '');
+            bestPrecision = ctxResult.precision;
+            bestRecall = ctxResult.recall;
+          }
+          break;
+        }
+      }
+    }
+  }
 
   return {
-    segment,
-    score: segScore.score,
-    precision: segScore.precision,
-    recall: segScore.recall
+    segment: bestSegment,
+    score: bestScore,
+    precision: bestPrecision,
+    recall: bestRecall
   };
 }
 
 // ---------------------------------------------------------
 // DETAILED TEXT COMPARISON (side-by-side: doc vs email)
 // ---------------------------------------------------------
-const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
+const compareTextDetailed = (docText, emailText, emailParagraphs, threshold = 0.7) => {
   // Split document into meaningful blocks (paragraphs/sentences)
   const docBlocks = docText
     .split(/\n{1,2}/)
@@ -355,8 +404,8 @@ const compareTextDetailed = (docText, emailText, threshold = 0.7) => {
       return;
     }
 
-    // Find the best matching email segment using position-based search
-    const { segment: emailSegment, score: segmentScore, precision, recall } = findBestEmailSegment(block, emailText);
+    // Find the best matching email segment using paragraph matching
+    const { segment: emailSegment, score: segmentScore, precision, recall } = findBestEmailSegment(block, emailParagraphs, emailText);
     const percentage = Math.round(segmentScore * 100);
 
     // Get word-level details
@@ -668,12 +717,12 @@ app.post("/qa", upload.single("file"), async (req, res) => {
     const { docText, docLinks } = await extractDoc(file.path);
     console.log(`Extracted ${docLinks.length} links from document`);
 
-    const { text: emailText, links: emailLinks, images: emailImages, resolvedUrl } = await getEmailContent(emailUrl);
-    console.log(`Extracted ${emailLinks.length} links and ${emailImages.length} images from email`);
+    const { text: emailText, links: emailLinks, images: emailImages, emailParagraphs, resolvedUrl } = await getEmailContent(emailUrl);
+    console.log(`Extracted ${emailLinks.length} links, ${emailImages.length} images, and ${emailParagraphs.length} paragraphs from email`);
     console.log(`Resolved URL: ${resolvedUrl}`);
 
-    // Use new detailed comparison
-    const textComparison = compareTextDetailed(docText, emailText);
+    // Use new detailed comparison with paragraph-level matching
+    const textComparison = compareTextDetailed(docText, emailText, emailParagraphs);
 
     const { report: linkReport, missing: missingDocLinks } = compareLinks(
       docLinks,
