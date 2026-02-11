@@ -748,22 +748,38 @@ async function checkGrammar(text, label = 'Text') {
       const contextText = context.text || '';
       const offset = context.offset || 0;
       const length = context.length || 0;
+      const errorText = contextText.substring(offset, offset + length);
 
       // Determine severity
       let severity = 'info';
-      if (category === 'TYPOS' || category === 'GRAMMAR') severity = 'high';
+      let isProperNoun = false;
+
+      if (category === 'TYPOS' || category === 'GRAMMAR') {
+        severity = 'high';
+
+        // Downgrade proper nouns / brand names:
+        // If the word starts with a capital letter and is flagged as TYPOS,
+        // it's likely a company name, person name, or brand (e.g. "Grazitti").
+        if (category === 'TYPOS' && errorText && /^[A-Z]/.test(errorText)) {
+          severity = 'low';
+          isProperNoun = true;
+        }
+      }
       else if (category === 'PUNCTUATION' || category === 'CASING') severity = 'medium';
       else if (category === 'STYLE' || category === 'REDUNDANCY') severity = 'low';
       else severity = 'medium';
 
       return {
-        message: m.message || 'Issue detected',
+        message: isProperNoun
+          ? `${m.message || 'Issue detected'} (likely a proper noun / brand name)`
+          : (m.message || 'Issue detected'),
         shortMessage: m.shortMessage || '',
         category: m.rule?.category?.name || category,
         categoryId: category,
         severity,
+        isProperNoun,
         context: contextText,
-        errorText: contextText.substring(offset, offset + length),
+        errorText,
         offset: m.offset,
         length: m.length,
         replacements: (m.replacements || []).slice(0, 3).map(r => r.value),

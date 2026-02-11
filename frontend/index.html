@@ -2278,6 +2278,7 @@
               <div class="grammar-item-header">
                 <span class="grammar-severity ${issue.severity}">${issue.severity.toUpperCase()}</span>
                 <span class="grammar-category">${escapeHtml(issue.category)}</span>
+                ${issue.isProperNoun ? '<span class="grammar-category" style="background: rgba(102,126,234,0.15); color: #667eea;">🏢 Likely Proper Noun</span>' : ''}
               </div>
               <div class="grammar-message">${escapeHtml(issue.message)}</div>
               <div class="grammar-context">…${contextHtml}…</div>
