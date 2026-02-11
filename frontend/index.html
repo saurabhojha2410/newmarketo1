@@ -1223,6 +1223,260 @@
     ::-webkit-scrollbar-thumb:hover {
       background: rgba(102, 126, 234, 0.5);
     }
+
+    /* Grammar Check Styles */
+    .grammar-section {
+      margin-bottom: 28px;
+    }
+
+    .grammar-section-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .grammar-item {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 10px;
+      border: 1px solid var(--glass-border);
+      border-left: 4px solid;
+      transition: all 0.2s ease;
+    }
+
+    .grammar-item:hover {
+      background: rgba(0, 0, 0, 0.3);
+      border-color: rgba(102, 126, 234, 0.3);
+    }
+
+    .grammar-item.high {
+      border-left-color: var(--error-color);
+    }
+
+    .grammar-item.medium {
+      border-left-color: var(--warning-color);
+    }
+
+    .grammar-item.low {
+      border-left-color: #667eea;
+    }
+
+    .grammar-item-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .grammar-severity {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .grammar-severity.high {
+      background: rgba(244, 92, 67, 0.2);
+      color: var(--error-color);
+    }
+
+    .grammar-severity.medium {
+      background: rgba(255, 183, 77, 0.2);
+      color: var(--warning-color);
+    }
+
+    .grammar-severity.low {
+      background: rgba(102, 126, 234, 0.2);
+      color: #667eea;
+    }
+
+    .grammar-category {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .grammar-message {
+      font-size: 14px;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .grammar-context {
+      font-size: 13px;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .grammar-error-highlight {
+      background: rgba(244, 92, 67, 0.25);
+      color: var(--error-color);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+      text-decoration: wavy underline;
+      text-decoration-color: var(--error-color);
+    }
+
+    .grammar-replacements {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 12px;
+    }
+
+    .grammar-replacements-label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .grammar-suggestion {
+      background: rgba(56, 239, 125, 0.15);
+      color: var(--success-color);
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-weight: 500;
+      font-size: 12px;
+    }
+
+    .grammar-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .grammar-summary-card {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      text-align: center;
+      border: 1px solid var(--glass-border);
+    }
+
+    .grammar-summary-value {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .grammar-summary-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+
+    /* Email Preview Styles */
+    .preview-views {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .preview-views {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .preview-frame-wrapper {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+      transition: all 0.3s ease;
+    }
+
+    .preview-frame-wrapper:hover {
+      border-color: rgba(102, 126, 234, 0.3);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .preview-frame-header {
+      padding: 14px 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .preview-frame-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .preview-frame-size {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+
+    .preview-frame-body {
+      position: relative;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .preview-frame-body.desktop {
+      height: 600px;
+    }
+
+    .preview-frame-body.mobile {
+      height: 700px;
+    }
+
+    .preview-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #ffffff;
+    }
+
+    .preview-open-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      background: rgba(102, 126, 234, 0.15);
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      border-radius: var(--radius-sm);
+      color: #667eea;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      margin-bottom: 20px;
+    }
+
+    .preview-open-link:hover {
+      background: rgba(102, 126, 234, 0.25);
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 
@@ -1314,6 +1568,10 @@
 
           <div class="tab-content" id="tab-images">
             <div id="imageResults"></div>
+          </div>
+
+          <div class="tab-content" id="tab-grammar">
+            <div id="grammarResults"></div>
           </div>
 
           <div class="tab-content" id="tab-previews">
@@ -1505,6 +1763,10 @@
           🖼️ Image Alt Tags
           <span class="tab-count" style="${imgSummary.issueCount > 0 ? 'background: rgba(244,92,67,0.2); color: var(--error-color);' : ''}">${imgSummary.totalImages}</span>
         </button>
+        <button class="tab-btn" data-tab="grammar">
+          ✏️ Grammar
+          <span class="tab-count" style="${data.grammarCheck && data.grammarCheck.totalIssues > 0 ? 'background: rgba(244,92,67,0.2); color: var(--error-color);' : ''}">${data.grammarCheck ? data.grammarCheck.totalIssues : '—'}</span>
+        </button>
         <button class="tab-btn" data-tab="previews">📱 Previews</button>
       `;
 
@@ -1671,63 +1933,180 @@
 
       imageResults.innerHTML = imageHtml;
 
-      // Previews - now shows responsive analysis instead of screenshots
-      let previewHtml = `
-        <div style="text-align: center; padding: 40px 20px;">
-          <div style="font-size: 48px; margin-bottom: 20px;">📱</div>
-          <h3 style="color: var(--text-primary); margin-bottom: 16px;">Responsive Design Check</h3>
-          <div style="padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 20px;">
-            <div style="font-size: 18px; color: ${data.responsive && data.responsive.includes('YES') ? 'var(--success-color)' : data.responsive && data.responsive.includes('MAYBE') ? 'var(--warning-color)' : 'var(--error-color)'}; font-weight: 600;">
-              ${data.responsive || 'Unable to determine'}
-            </div>
-          </div>
-      `;
+      // Previews - show actual email rendering in desktop + mobile iframes
+      let previewHtml = '';
 
-      // Add responsive details if available
-      if (data.responsiveDetails) {
+      if (data.emailHtml) {
+        // Open in browser link
+        if (data.emailResolvedUrl) {
+          previewHtml += `
+            <a href="${escapeHtml(data.emailResolvedUrl)}" target="_blank" rel="noopener noreferrer" class="preview-open-link">
+              🌐 Open Email in Browser
+            </a>
+          `;
+        }
+
+        // Desktop + Mobile side-by-side
         previewHtml += `
-          <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; text-align: left;">
-            <h4 style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">📊 Analysis Details</h4>
-            <div style="display: grid; gap: 12px;">
-              <div style="display: flex; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                <span style="color: var(--text-muted);">Viewport Meta Tag</span>
-                <span style="color: ${data.responsiveDetails.hasViewportTag ? 'var(--success-color)' : 'var(--error-color)'};">
-                  ${data.responsiveDetails.hasViewportTag ? '✅ Found' : '❌ Not Found'}
-                </span>
+          <div class="preview-views">
+            <div class="preview-frame-wrapper">
+              <div class="preview-frame-header">
+                <span style="font-size: 18px;">🖥️</span>
+                <span class="preview-frame-title">Desktop View</span>
+                <span class="preview-frame-size">600px width</span>
               </div>
-              <div style="display: flex; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                <span style="color: var(--text-muted);">Media Queries</span>
-                <span style="color: ${data.responsiveDetails.hasMediaQueries ? 'var(--success-color)' : 'var(--warning-color)'};">
-                  ${data.responsiveDetails.hasMediaQueries ? '✅ Found' : '⚠️ Not Found'}
-                </span>
+              <div class="preview-frame-body desktop">
+                <iframe id="previewDesktop" class="preview-iframe" sandbox="allow-same-origin" title="Desktop email preview"></iframe>
               </div>
-              <div style="display: flex; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                <span style="color: var(--text-muted);">Responsive Tables</span>
-                <span style="color: ${data.responsiveDetails.hasResponsiveTables ? 'var(--success-color)' : 'var(--warning-color)'};">
-                  ${data.responsiveDetails.hasResponsiveTables ? '✅ Found' : '⚠️ Not Found'}
-                </span>
+            </div>
+            <div class="preview-frame-wrapper">
+              <div class="preview-frame-header">
+                <span style="font-size: 18px;">📱</span>
+                <span class="preview-frame-title">Mobile View</span>
+                <span class="preview-frame-size">375px width</span>
               </div>
-              ${data.responsiveDetails.viewportContent ? `
-                <div style="padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                  <span style="color: var(--text-muted); display: block; margin-bottom: 6px;">Viewport Content:</span>
-                  <code style="color: var(--text-primary); font-size: 12px; word-break: break-all;">${escapeHtml(data.responsiveDetails.viewportContent)}</code>
-                </div>
-              ` : ''}
+              <div class="preview-frame-body mobile">
+                <iframe id="previewMobile" class="preview-iframe" sandbox="allow-same-origin" title="Mobile email preview" style="width: 375px; margin: 0 auto; display: block;"></iframe>
+              </div>
             </div>
           </div>
         `;
       }
 
+      // Responsive design analysis
       previewHtml += `
-          <div style="margin-top: 20px; padding: 16px; background: rgba(102, 126, 234, 0.1); border-radius: 8px; border: 1px solid rgba(102, 126, 234, 0.2);">
-            <p style="color: var(--text-secondary); font-size: 13px; margin: 0;">
-              💡 <strong>Tip:</strong> To see actual screenshots, open the email URL in your browser and use browser DevTools to preview different screen sizes.
-            </p>
+        <div style="background: rgba(0,0,0,0.2); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
+          <h4 style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+            📊 Responsive Design Analysis
+          </h4>
+          <div style="padding: 14px 20px; background: rgba(0,0,0,0.2); border-radius: 10px; margin-bottom: 16px; border-left: 4px solid ${data.responsive && data.responsive.includes('YES') ? 'var(--success-color)' : data.responsive && data.responsive.includes('MAYBE') ? 'var(--warning-color)' : 'var(--error-color)'};">
+            <div style="font-size: 15px; color: ${data.responsive && data.responsive.includes('YES') ? 'var(--success-color)' : data.responsive && data.responsive.includes('MAYBE') ? 'var(--warning-color)' : 'var(--error-color)'}; font-weight: 600;">
+              ${data.responsive || 'Unable to determine'}
+            </div>
           </div>
-        </div>
       `;
 
+      if (data.responsiveDetails && !data.responsiveDetails.error) {
+        previewHtml += `
+          <div style="display: grid; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; padding: 10px 14px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+              <span style="color: var(--text-muted); font-size: 13px;">Viewport Meta Tag</span>
+              <span style="color: ${data.responsiveDetails.hasViewportTag ? 'var(--success-color)' : 'var(--error-color)'}; font-size: 13px;">
+                ${data.responsiveDetails.hasViewportTag ? '✅ Found' : '❌ Not Found'}
+              </span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 10px 14px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+              <span style="color: var(--text-muted); font-size: 13px;">Media Queries</span>
+              <span style="color: ${data.responsiveDetails.hasMediaQueries ? 'var(--success-color)' : 'var(--warning-color)'}; font-size: 13px;">
+                ${data.responsiveDetails.hasMediaQueries ? '✅ Found' : '⚠️ Not Found'}
+              </span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 10px 14px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+              <span style="color: var(--text-muted); font-size: 13px;">Responsive Tables</span>
+              <span style="color: ${data.responsiveDetails.hasResponsiveTables ? 'var(--success-color)' : 'var(--warning-color)'}; font-size: 13px;">
+                ${data.responsiveDetails.hasResponsiveTables ? '✅ Found' : '⚠️ Not Found'}
+              </span>
+            </div>
+          </div>
+        `;
+      }
+
+      previewHtml += '</div>';
+
       previewGrid.innerHTML = previewHtml;
+
+      // Load email HTML into iframes after DOM is updated
+      if (data.emailHtml) {
+        setTimeout(() => {
+          const desktopFrame = document.getElementById('previewDesktop');
+          const mobileFrame = document.getElementById('previewMobile');
+
+          if (desktopFrame) {
+            desktopFrame.srcdoc = data.emailHtml;
+          }
+          if (mobileFrame) {
+            mobileFrame.srcdoc = data.emailHtml;
+          }
+        }, 100);
+      }
+
+      // Grammar Results
+      const grammarResults = document.getElementById('grammarResults');
+      let grammarHtml = '';
+
+      if (data.grammarCheck) {
+        const gc = data.grammarCheck;
+
+        // Overall summary
+        const totalIssues = gc.totalIssues || 0;
+        const docIssues = gc.document?.summary?.total || 0;
+        const emailIssues = gc.email?.summary?.total || 0;
+        const docHigh = gc.document?.summary?.high || 0;
+        const emailHigh = gc.email?.summary?.high || 0;
+        const docMed = gc.document?.summary?.medium || 0;
+        const emailMed = gc.email?.summary?.medium || 0;
+        const docLow = gc.document?.summary?.low || 0;
+        const emailLow = gc.email?.summary?.low || 0;
+
+        grammarHtml += `
+          <div class="grammar-summary-grid">
+            <div class="grammar-summary-card">
+              <div class="grammar-summary-value" style="color: ${totalIssues > 0 ? 'var(--warning-color)' : 'var(--success-color)'}">${totalIssues}</div>
+              <div class="grammar-summary-label">Total Issues</div>
+            </div>
+            <div class="grammar-summary-card">
+              <div class="grammar-summary-value" style="color: var(--text-primary);">${docIssues}</div>
+              <div class="grammar-summary-label">Doc Issues</div>
+            </div>
+            <div class="grammar-summary-card">
+              <div class="grammar-summary-value" style="color: var(--text-primary);">${emailIssues}</div>
+              <div class="grammar-summary-label">Email Issues</div>
+            </div>
+            <div class="grammar-summary-card">
+              <div class="grammar-summary-value" style="color: var(--error-color);">${docHigh + emailHigh}</div>
+              <div class="grammar-summary-label">High Severity</div>
+            </div>
+            <div class="grammar-summary-card">
+              <div class="grammar-summary-value" style="color: var(--warning-color);">${docMed + emailMed}</div>
+              <div class="grammar-summary-label">Medium</div>
+            </div>
+            <div class="grammar-summary-card">
+              <div class="grammar-summary-value" style="color: #667eea;">${docLow + emailLow}</div>
+              <div class="grammar-summary-label">Low / Style</div>
+            </div>
+          </div>
+        `;
+
+        // Check if skipped
+        if (gc.document?.summary?.status === 'SKIPPED' && gc.email?.summary?.status === 'SKIPPED') {
+          grammarHtml += `
+            <div style="padding: 20px; background: rgba(102,126,234,0.1); border-radius: 12px; border: 1px solid rgba(102,126,234,0.2); text-align: center; color: var(--text-secondary);">
+              <div style="font-size: 32px; margin-bottom: 10px;">⏭️</div>
+              <p>Grammar check was skipped (LanguageTool API unavailable).</p>
+              <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">This doesn't affect other QA results. Try again later.</p>
+            </div>
+          `;
+        } else {
+          // Document grammar
+          grammarHtml += renderGrammarSection(gc.document, '📄 Document');
+
+          // Email grammar
+          grammarHtml += renderGrammarSection(gc.email, '📧 Email');
+        }
+
+        // Info note
+        grammarHtml += `
+          <div style="margin-top: 16px; padding: 14px 18px; background: rgba(102, 126, 234, 0.08); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.15);">
+            <p style="color: var(--text-secondary); font-size: 12px; margin: 0;">
+              💡 <strong>Powered by LanguageTool</strong> (free, open-source). Checks grammar, spelling, punctuation, and style for English. Some issues may be false positives — review each suggestion carefully.
+            </p>
+          </div>
+        `;
+      } else {
+        grammarHtml = '<div class="empty-state"><div class="empty-state-icon">✏️</div><p>Grammar check not available</p></div>';
+      }
+
+      grammarResults.innerHTML = grammarHtml;
     }
 
     function renderComparisonBlock(item, type) {
@@ -1804,6 +2183,65 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    function renderGrammarSection(grammarData, title) {
+      if (!grammarData || !grammarData.issues) return '';
+
+      let html = `<div class="grammar-section">`;
+
+      const statusIcon = grammarData.summary.status === 'PASS' ? '✅'
+        : grammarData.summary.status === 'FAIL' ? '❌'
+          : grammarData.summary.status === 'SKIPPED' ? '⏭️' : '⚠️';
+
+      html += `<div class="grammar-section-title">
+        <span>${title}</span>
+        <span style="font-size: 12px; color: var(--text-muted);">${statusIcon} ${grammarData.summary.total} issue${grammarData.summary.total !== 1 ? 's' : ''}</span>
+      </div>`;
+
+      if (grammarData.summary.status === 'SKIPPED') {
+        html += `<div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; color: var(--text-muted); font-size: 13px;">Check skipped: ${grammarData.summary.error || 'API unavailable'}</div>`;
+      } else if (grammarData.issues.length === 0) {
+        html += `<div style="padding: 20px; text-align: center; color: var(--success-color); font-size: 14px;">✅ No grammar or spelling issues found!</div>`;
+      } else {
+        // Sort by severity: high first
+        const sorted = [...grammarData.issues].sort((a, b) => {
+          const order = { high: 0, medium: 1, low: 2, info: 3 };
+          return (order[a.severity] || 3) - (order[b.severity] || 3);
+        });
+
+        sorted.forEach(issue => {
+          // Build context with highlighted error
+          let contextHtml = escapeHtml(issue.context);
+          if (issue.errorText) {
+            const escapedError = escapeHtml(issue.errorText);
+            contextHtml = contextHtml.replace(
+              escapedError,
+              `<span class="grammar-error-highlight">${escapedError}</span>`
+            );
+          }
+
+          html += `
+            <div class="grammar-item ${issue.severity}">
+              <div class="grammar-item-header">
+                <span class="grammar-severity ${issue.severity}">${issue.severity.toUpperCase()}</span>
+                <span class="grammar-category">${escapeHtml(issue.category)}</span>
+              </div>
+              <div class="grammar-message">${escapeHtml(issue.message)}</div>
+              <div class="grammar-context">…${contextHtml}…</div>
+              ${issue.replacements.length > 0 ? `
+                <div class="grammar-replacements">
+                  <span class="grammar-replacements-label">💡 Suggestions:</span>
+                  ${issue.replacements.map(r => `<span class="grammar-suggestion">${escapeHtml(r)}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        });
+      }
+
+      html += '</div>';
+      return html;
     }
 
     // Lightbox functions

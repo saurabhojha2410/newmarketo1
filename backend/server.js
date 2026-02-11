@@ -104,10 +104,49 @@ const stripUtm = (href = "") => {
 const hasUtm = (href) => /utm[_=-]/i.test(href);
 
 // ---------------------------------------------------------
+// RETRY HELPER — retries failed network requests with backoff
+// ---------------------------------------------------------
+async function withRetry(fn, { retries = 3, baseDelay = 2000, label = 'request' } = {}) {
+  let lastError;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const isRetryable = error.code === 'ECONNRESET' ||
+        error.code === 'ECONNABORTED' ||
+        error.code === 'ETIMEDOUT' ||
+        error.code === 'ENOTFOUND' ||
+        error.code === 'EAI_AGAIN' ||
+        error.message?.includes('timeout') ||
+        error.message?.includes('socket hang up') ||
+        (error.response && error.response.status >= 500);
+
+      if (!isRetryable || attempt === retries) {
+        console.error(`${label} failed after ${attempt} attempt(s): ${error.message}`);
+        throw error;
+      }
+
+      const delay = baseDelay * Math.pow(2, attempt - 1); // exponential backoff
+      console.warn(`${label} attempt ${attempt} failed (${error.message}). Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
+
+// ---------------------------------------------------------
 // SCRAPE EMAIL (using axios + cheerio - NO BROWSER NEEDED!)
 // Handles 302 redirect chains with cookie forwarding
+// Now with retry logic for intermittent failures
 // ---------------------------------------------------------
 async function getEmailContent(url) {
+  return withRetry(async () => {
+    return await _fetchEmailContent(url);
+  }, { retries: 3, baseDelay: 2000, label: 'Email fetch' });
+}
+
+async function _fetchEmailContent(url) {
   try {
     let currentUrl = url;
     let cookies = [];
@@ -116,7 +155,7 @@ async function getEmailContent(url) {
 
     // Manually follow redirects to preserve cookies across hops
     for (let i = 0; i < MAX_REDIRECTS; i++) {
-      console.log(`Fetching (attempt ${i + 1}): ${currentUrl}`);
+      console.log(`Fetching (redirect hop ${i + 1}): ${currentUrl}`);
       response = await axios.get(currentUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -126,7 +165,7 @@ async function getEmailContent(url) {
           'Connection': 'keep-alive',
           ...(cookies.length > 0 ? { 'Cookie': cookies.join('; ') } : {}),
         },
-        timeout: 30000,
+        timeout: 45000,               // increased timeout for slow servers
         maxRedirects: 0,              // disable auto-redirects
         validateStatus: (s) => s < 400, // accept 2xx and 3xx
       });
@@ -255,7 +294,7 @@ async function getEmailContent(url) {
     });
 
     console.log(`Successfully extracted: ${text.length} chars, ${links.length} links, ${images.length} images`);
-    return { text, links, images, emailParagraphs, resolvedUrl: currentUrl };
+    return { text, html, links, images, emailParagraphs, resolvedUrl: currentUrl };
   } catch (error) {
     console.error("Error fetching email content:", error.message);
     if (error.response) {
@@ -265,6 +304,7 @@ async function getEmailContent(url) {
     throw new Error(`Failed to fetch email content: ${error.message}`);
   }
 }
+
 
 // ---------------------------------------------------------
 // DOCX TEXT + LINKS
@@ -619,7 +659,7 @@ async function checkResponsive(url) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
-      timeout: 15000,
+      timeout: 20000,
     });
 
     const html = response.data;
@@ -666,6 +706,103 @@ async function checkResponsive(url) {
 }
 
 // ---------------------------------------------------------
+// GRAMMAR CHECK (using free LanguageTool public API)
+// No API key needed! Supports English grammar, spelling,
+// punctuation, and style checks.
+// ---------------------------------------------------------
+async function checkGrammar(text, label = 'Text') {
+  try {
+    if (!text || text.trim().length < 20) {
+      return { issues: [], summary: { total: 0, status: 'PASS' }, label };
+    }
+
+    // LanguageTool free API has a ~20KB text limit; truncate safely
+    const cleanText = text
+      .replace(/<[^>]+>/g, ' ')   // strip HTML tags
+      .replace(/\s+/g, ' ')       // collapse whitespace
+      .trim()
+      .substring(0, 10000);       // stay well within limits
+
+    console.log(`Grammar check (${label}): sending ${cleanText.length} chars to LanguageTool...`);
+
+    const params = new URLSearchParams();
+    params.append('text', cleanText);
+    params.append('language', 'en-US');
+    params.append('enabledOnly', 'false');
+
+    const response = await axios.post(
+      'https://api.languagetool.org/v2/check',
+      params.toString(),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 20000,
+      }
+    );
+
+    const matches = response.data.matches || [];
+
+    // Categorize and format issues
+    const issues = matches.map(m => {
+      const category = m.rule?.category?.id || 'UNKNOWN';
+      const context = m.context || {};
+      const contextText = context.text || '';
+      const offset = context.offset || 0;
+      const length = context.length || 0;
+
+      // Determine severity
+      let severity = 'info';
+      if (category === 'TYPOS' || category === 'GRAMMAR') severity = 'high';
+      else if (category === 'PUNCTUATION' || category === 'CASING') severity = 'medium';
+      else if (category === 'STYLE' || category === 'REDUNDANCY') severity = 'low';
+      else severity = 'medium';
+
+      return {
+        message: m.message || 'Issue detected',
+        shortMessage: m.shortMessage || '',
+        category: m.rule?.category?.name || category,
+        categoryId: category,
+        severity,
+        context: contextText,
+        errorText: contextText.substring(offset, offset + length),
+        offset: m.offset,
+        length: m.length,
+        replacements: (m.replacements || []).slice(0, 3).map(r => r.value),
+        ruleId: m.rule?.id || '',
+        ruleDescription: m.rule?.description || '',
+      };
+    });
+
+    // Summary counts
+    const highCount = issues.filter(i => i.severity === 'high').length;
+    const mediumCount = issues.filter(i => i.severity === 'medium').length;
+    const lowCount = issues.filter(i => i.severity === 'low').length;
+
+    const status = highCount > 0 ? 'FAIL' : mediumCount > 0 ? 'WARNING' : 'PASS';
+
+    console.log(`Grammar check (${label}): ${issues.length} issues found (${highCount} high, ${mediumCount} medium, ${lowCount} low)`);
+
+    return {
+      issues,
+      summary: {
+        total: issues.length,
+        high: highCount,
+        medium: mediumCount,
+        low: lowCount,
+        status,
+      },
+      label,
+    };
+  } catch (error) {
+    console.warn(`Grammar check failed for ${label} (non-fatal): ${error.message}`);
+    return {
+      issues: [],
+      summary: { total: 0, status: 'SKIPPED', error: error.message },
+      label,
+    };
+  }
+}
+
+// ---------------------------------------------------------
 // FORMAT OUTPUT AS JSON
 // ---------------------------------------------------------
 function formatResultJSON(data) {
@@ -694,6 +831,9 @@ function formatResultJSON(data) {
       missingLinks: data.missingDocLinks
     },
     imageAltCheck: data.imageAltCheck || { results: [], summary: { totalImages: 0, issueCount: 0, status: 'PASS' } },
+    grammarCheck: data.grammarCheck || null,
+    emailHtml: data.emailHtml || null,
+    emailResolvedUrl: data.emailResolvedUrl || null,
     responsive: data.responsive,
     responsiveDetails: data.responsiveDetails || null
   };
@@ -703,9 +843,9 @@ function formatResultJSON(data) {
 // MAIN ENDPOINT
 // ---------------------------------------------------------
 app.post("/qa", upload.single("file"), async (req, res) => {
+  const file = req.file;
   try {
     const { emailUrl } = req.body;
-    const file = req.file;
 
     if (!emailUrl || !file) {
       return res.status(400).json({ error: "Missing input" });
@@ -717,7 +857,7 @@ app.post("/qa", upload.single("file"), async (req, res) => {
     const { docText, docLinks } = await extractDoc(file.path);
     console.log(`Extracted ${docLinks.length} links from document`);
 
-    const { text: emailText, links: emailLinks, images: emailImages, emailParagraphs, resolvedUrl } = await getEmailContent(emailUrl);
+    const { text: emailText, html: emailHtml, links: emailLinks, images: emailImages, emailParagraphs, resolvedUrl } = await getEmailContent(emailUrl);
     console.log(`Extracted ${emailLinks.length} links, ${emailImages.length} images, and ${emailParagraphs.length} paragraphs from email`);
     console.log(`Resolved URL: ${resolvedUrl}`);
 
@@ -733,11 +873,35 @@ app.post("/qa", upload.single("file"), async (req, res) => {
     const imageAltCheck = checkImageAltTags(emailImages);
     console.log(`Image alt check: ${imageAltCheck.summary.totalImages} images, ${imageAltCheck.summary.issueCount} issues`);
 
-    // Check responsive design (use resolved URL to avoid 302 issues)
-    const { responsive, details: responsiveDetails } = await checkResponsive(resolvedUrl || emailUrl);
+    // Check responsive design — wrapped so it NEVER crashes the whole QA
+    let responsive = "Unable to check";
+    let responsiveDetails = null;
+    try {
+      const responsiveResult = await checkResponsive(resolvedUrl || emailUrl);
+      responsive = responsiveResult.responsive;
+      responsiveDetails = responsiveResult.details;
+    } catch (respErr) {
+      console.warn(`Responsive check failed (non-fatal): ${respErr.message}`);
+      responsiveDetails = { error: respErr.message, note: "Responsive check failed but comparison results are still valid" };
+    }
 
-    // Clean up uploaded file
-    fs.unlinkSync(file.path);
+    // Grammar check — run for both doc and email text (non-fatal)
+    let grammarCheck = null;
+    try {
+      const [docGrammar, emailGrammar] = await Promise.all([
+        checkGrammar(docText, 'Document'),
+        checkGrammar(emailText, 'Email'),
+      ]);
+      grammarCheck = {
+        document: docGrammar,
+        email: emailGrammar,
+        totalIssues: docGrammar.summary.total + emailGrammar.summary.total,
+      };
+      console.log(`Grammar check complete: ${grammarCheck.totalIssues} total issues`);
+    } catch (grammarErr) {
+      console.warn(`Grammar check failed (non-fatal): ${grammarErr.message}`);
+      grammarCheck = null;
+    }
 
     // Return JSON response
     const result = formatResultJSON({
@@ -745,6 +909,9 @@ app.post("/qa", upload.single("file"), async (req, res) => {
       linkReport,
       missingDocLinks,
       imageAltCheck,
+      grammarCheck,
+      emailHtml,
+      emailResolvedUrl: resolvedUrl,
       responsive,
       responsiveDetails
     });
@@ -755,6 +922,18 @@ app.post("/qa", upload.single("file"), async (req, res) => {
     console.error("QA Processing Error:", err.message);
     console.error("Stack trace:", err.stack);
     res.status(500).json({ error: "QA processing failed", details: err.message });
+  } finally {
+    // Always clean up uploaded file, even on error
+    if (file && file.path) {
+      try {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+          console.log('Cleaned up uploaded file.');
+        }
+      } catch (cleanupErr) {
+        console.warn(`File cleanup failed: ${cleanupErr.message}`);
+      }
+    }
   }
 });
 
