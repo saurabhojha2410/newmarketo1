@@ -1386,75 +1386,38 @@
     }
 
     /* Email Preview Styles */
-    .preview-views {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-bottom: 24px;
-    }
-
-    @media (max-width: 1024px) {
-      .preview-views {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .preview-frame-wrapper {
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      border: 1px solid var(--glass-border);
-      transition: all 0.3s ease;
-    }
-
-    .preview-frame-wrapper:hover {
-      border-color: rgba(102, 126, 234, 0.3);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-    }
-
-    .preview-frame-header {
-      padding: 14px 20px;
-      background: rgba(255, 255, 255, 0.05);
-      border-bottom: 1px solid var(--glass-border);
+    .preview-toolbar {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
     }
 
-    .preview-frame-title {
-      font-size: 14px;
+    .preview-mode-btn {
+      padding: 10px 20px;
+      font-size: 13px;
       font-weight: 600;
-      color: var(--text-primary);
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .preview-frame-size {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-left: auto;
-      background: rgba(255, 255, 255, 0.06);
-      padding: 3px 10px;
-      border-radius: 4px;
+    .preview-mode-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
     }
 
-    .preview-frame-body {
-      position: relative;
-      background: #ffffff;
-      overflow: hidden;
-    }
-
-    .preview-frame-body.desktop {
-      height: 600px;
-    }
-
-    .preview-frame-body.mobile {
-      height: 700px;
-    }
-
-    .preview-iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: #ffffff;
+    .preview-mode-btn.active {
+      background: var(--primary-gradient);
+      border-color: transparent;
+      color: white;
     }
 
     .preview-open-link {
@@ -1470,12 +1433,105 @@
       font-size: 13px;
       font-weight: 500;
       transition: all 0.2s ease;
-      margin-bottom: 20px;
+      margin-left: auto;
     }
 
     .preview-open-link:hover {
       background: rgba(102, 126, 234, 0.25);
       transform: translateY(-1px);
+    }
+
+    .preview-device {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+      background: rgba(0, 0, 0, 0.3);
+      margin-bottom: 24px;
+    }
+
+    .preview-device-bar {
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preview-device-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .preview-device-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .preview-device-dots span:first-child {
+      background: #ff5f57;
+    }
+
+    .preview-device-dots span:nth-child(2) {
+      background: #ffbd2e;
+    }
+
+    .preview-device-dots span:nth-child(3) {
+      background: #28ca41;
+    }
+
+    .preview-device-url {
+      flex: 1;
+      margin-left: 10px;
+      padding: 6px 14px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .preview-iframe-container {
+      background: #ffffff;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      position: relative;
+    }
+
+    .preview-iframe-container.desktop-mode {
+      height: 700px;
+    }
+
+    .preview-iframe-container.mobile-mode {
+      height: 750px;
+      background: #1a1a2e;
+    }
+
+    .preview-iframe-scroll {
+      overflow-y: auto;
+      overflow-x: hidden;
+      height: 100%;
+      width: 100%;
+    }
+
+    .preview-iframe-scroll.mobile-scroll {
+      width: 375px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 0 auto;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .preview-iframe {
+      width: 100%;
+      border: none;
+      background: #ffffff;
+      min-height: 100%;
     }
   </style>
 </head>
@@ -1933,40 +1989,40 @@
 
       imageResults.innerHTML = imageHtml;
 
-      // Previews - show actual email rendering in desktop + mobile iframes
+      // Previews - tabbed Desktop/Mobile with proper device frames
       let previewHtml = '';
 
       if (data.emailHtml) {
-        // Open in browser link
-        if (data.emailResolvedUrl) {
-          previewHtml += `
-            <a href="${escapeHtml(data.emailResolvedUrl)}" target="_blank" rel="noopener noreferrer" class="preview-open-link">
-              🌐 Open Email in Browser
-            </a>
-          `;
-        }
-
-        // Desktop + Mobile side-by-side
+        // Toolbar: mode buttons + open in browser
         previewHtml += `
-          <div class="preview-views">
-            <div class="preview-frame-wrapper">
-              <div class="preview-frame-header">
-                <span style="font-size: 18px;">🖥️</span>
-                <span class="preview-frame-title">Desktop View</span>
-                <span class="preview-frame-size">600px width</span>
+          <div class="preview-toolbar">
+            <button class="preview-mode-btn active" onclick="switchPreviewMode('desktop')" id="previewBtnDesktop">
+              🖥️ Desktop
+            </button>
+            <button class="preview-mode-btn" onclick="switchPreviewMode('mobile')" id="previewBtnMobile">
+              📱 Mobile
+            </button>
+            ${data.emailResolvedUrl ? `
+              <a href="${escapeHtml(data.emailResolvedUrl)}" target="_blank" rel="noopener noreferrer" class="preview-open-link">
+                🌐 Open in Browser
+              </a>
+            ` : ''}
+          </div>
+        `;
+
+        // Device frame
+        const urlDisplay = data.emailResolvedUrl ? escapeHtml(data.emailResolvedUrl) : 'Email Preview';
+        previewHtml += `
+          <div class="preview-device" id="previewDevice">
+            <div class="preview-device-bar">
+              <div class="preview-device-dots">
+                <span></span><span></span><span></span>
               </div>
-              <div class="preview-frame-body desktop">
-                <iframe id="previewDesktop" class="preview-iframe" sandbox="allow-same-origin" title="Desktop email preview"></iframe>
-              </div>
+              <div class="preview-device-url">${urlDisplay}</div>
             </div>
-            <div class="preview-frame-wrapper">
-              <div class="preview-frame-header">
-                <span style="font-size: 18px;">📱</span>
-                <span class="preview-frame-title">Mobile View</span>
-                <span class="preview-frame-size">375px width</span>
-              </div>
-              <div class="preview-frame-body mobile">
-                <iframe id="previewMobile" class="preview-iframe" sandbox="allow-same-origin" title="Mobile email preview" style="width: 375px; margin: 0 auto; display: block;"></iframe>
+            <div class="preview-iframe-container desktop-mode" id="previewIframeContainer">
+              <div class="preview-iframe-scroll" id="previewScroll">
+                <iframe id="previewIframe" class="preview-iframe" sandbox="allow-same-origin" title="Email preview"></iframe>
               </div>
             </div>
           </div>
@@ -2015,19 +2071,15 @@
 
       previewGrid.innerHTML = previewHtml;
 
-      // Load email HTML into iframes after DOM is updated
+      // Load email HTML into iframe after DOM is updated
       if (data.emailHtml) {
-        setTimeout(() => {
-          const desktopFrame = document.getElementById('previewDesktop');
-          const mobileFrame = document.getElementById('previewMobile');
+        // Store the email HTML globally for mode switching
+        window._emailHtml = data.emailHtml;
+        window._emailResolvedUrl = data.emailResolvedUrl || '';
 
-          if (desktopFrame) {
-            desktopFrame.srcdoc = data.emailHtml;
-          }
-          if (mobileFrame) {
-            mobileFrame.srcdoc = data.emailHtml;
-          }
-        }, 100);
+        setTimeout(() => {
+          loadPreviewIframe('desktop');
+        }, 150);
       }
 
       // Grammar Results
@@ -2263,6 +2315,88 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeLightbox();
     });
+
+    // ── Email Preview Functions ──────────────────────────
+
+    function loadPreviewIframe(mode) {
+      const iframe = document.getElementById('previewIframe');
+      if (!iframe || !window._emailHtml) return;
+
+      // Inject <base> tag so images/CSS load from the email's origin
+      let html = window._emailHtml;
+      if (window._emailResolvedUrl) {
+        try {
+          const urlObj = new URL(window._emailResolvedUrl);
+          const baseUrl = urlObj.origin + '/';
+          // Remove any existing <base> tags
+          html = html.replace(/<base[^>]*>/gi, '');
+          // Add our base tag right after <head>
+          html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseUrl}" target="_blank">`);
+        } catch (e) {
+          // If URL parsing fails, continue without base tag
+        }
+      }
+
+      // Add viewport meta for mobile rendering & scrollbar fix
+      const viewportFix = mode === 'mobile'
+        ? '<meta name="viewport" content="width=375, initial-scale=1">'
+        : '<meta name="viewport" content="width=600, initial-scale=1">';
+
+      // Inject styling to prevent horizontal overflow and add smooth scrolling
+      const injectStyle = `
+        <style>
+          * { max-width: 100% !important; box-sizing: border-box !important; }
+          body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; }
+          img { max-width: 100% !important; height: auto !important; }
+          table { max-width: 100% !important; }
+        </style>
+      `;
+
+      html = html.replace(/<head([^>]*)>/i, `<head$1>${viewportFix}${injectStyle}`);
+
+      // Write to iframe using srcdoc
+      iframe.srcdoc = html;
+
+      // Auto-resize iframe height once content loads
+      iframe.onload = () => {
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          const contentHeight = Math.max(
+            doc.body.scrollHeight,
+            doc.documentElement.scrollHeight,
+            800
+          );
+          iframe.style.height = contentHeight + 'px';
+        } catch (e) {
+          iframe.style.height = '1200px';
+        }
+      };
+    }
+
+    function switchPreviewMode(mode) {
+      // Toggle active button
+      const desktopBtn = document.getElementById('previewBtnDesktop');
+      const mobileBtn = document.getElementById('previewBtnMobile');
+      const container = document.getElementById('previewIframeContainer');
+      const scroll = document.getElementById('previewScroll');
+
+      if (!container || !scroll) return;
+
+      if (mode === 'mobile') {
+        desktopBtn.classList.remove('active');
+        mobileBtn.classList.add('active');
+        container.className = 'preview-iframe-container mobile-mode';
+        scroll.className = 'preview-iframe-scroll mobile-scroll';
+      } else {
+        mobileBtn.classList.remove('active');
+        desktopBtn.classList.add('active');
+        container.className = 'preview-iframe-container desktop-mode';
+        scroll.className = 'preview-iframe-scroll';
+      }
+
+      // Reload iframe with new mode
+      loadPreviewIframe(mode);
+    }
   </script>
 </body>
 
